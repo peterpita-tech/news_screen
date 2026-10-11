@@ -1,0 +1,13 @@
+{
+  "_說明": "無免費公開 API 的指標請在此手動更新：value 填數值（未知請填 null），asof 填資料日期，note 註明來源。存檔後按儀表板「重新整理」或等下次排程即生效。",
+  "spx_fwd_pe": {"value": null, "asof": null, "note": "S&P 500 未來 12 個月預估本益比（倍），來源：FactSet Earnings Insight / Yardeni"},
+  "ism_pmi": {"value": null, "asof": null, "note": "ISM 製造業 PMI，每月第一個營業日公布"},
+  "ndc_signal": {"value": null, "asof": null, "note": "國發會景氣對策信號綜合分數（9–45）"},
+  "margin_ratio": {"value": null, "asof": null, "note": "台股大盤融資維持率（%）"},
+  "foreign_futures_net_oi": {"value": null, "asof": null, "note": "外資台指期淨未平倉口數，淨空單請填負數（例：-32000）"},
+  "export_orders_yoy": {"value": null, "asof": null, "note": "外銷訂單年增率（%）"},
+  "coreweave_cds_bp": {"value": null, "asof": null, "note": "CoreWeave CDS 相較基準變動（bp）"},
+  "csp_capex_revision": {"value": null, "asof": null, "note": "微軟、Alphabet、亞馬遜、Meta 資本支出指引修正幅度（%），下修填負數"},
+  "tsmc_capex_yoy": {"value": null, "asof": null, "note": "台積電全年資本支出指引年增率（%）"},
+  "tw_cds_change_bp": {"value": null, "asof": null, "note": "台灣 5Y 主權 CDS 相較 3 個月前變動（bp）"}
+}

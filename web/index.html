@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>全球新聞指標儀表板</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600;700;800;900&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">情境分析<span class="bar">║</span><span class="sub">全球新聞與指標監控</span></div>
+    <nav class="tabs" id="tabs">
+      <a href="#overview">市場概況</a>
+      <a href="#scenario">情境判讀</a>
+      <a href="#monitor">指標監控</a>
+      <a href="#news">新聞衝擊</a>
+      <a href="#screener">全市場篩選</a>
+    </nav>
+    <div class="meta">
+      <span id="updated">載入中…</span>
+      <button id="colorBtn" title="切換漲跌顏色">紅漲綠跌</button>
+      <button id="refreshBtn" class="primary" hidden>重新整理</button>
+    </div>
+  </div>
+</header>
+
+<main id="app">
+  <div class="loading" id="loading">資料載入中…首次啟動需抓取新聞與全球行情（約 30–60 秒）</div>
+  <div id="banners"></div>
+
+  <section id="overview" hidden>
+    <h2 class="sec">市場概況<span class="bar">║</span><span class="t">全球主要指數與資產</span><small>點選卡片可在篩選表中查看</small></h2>
+    <div class="ov-grid" id="ovGrid"></div>
+  </section>
+
+  <section id="scenario" hidden>
+    <h2 class="sec">情境分析<span class="bar">║</span><span class="t">跨市場情境矩陣與多因子共振</span><small>三大維度各至少一項跨越警戒，才確認體制切換</small></h2>
+    <div id="verdict" class="card verdict"></div>
+    <div class="res-grid" id="resGrid"></div>
+    <div class="sc-grid" id="scGrid"></div>
+    <h3 style="margin:16px 0 6px;font-size:15px">情境資產配置建議</h3>
+    <div class="tbl-wrap"><table id="allocTbl"></table></div>
+  </section>
+
+  <section id="monitor" hidden>
+    <h2 class="sec">指標監控<span class="bar">║</span><span class="t">分級觸發條件與量化建議動作</span><small>● 正常 ● 一級警戒 ● 二級危機；「手動」標記之指標請於 config/manual_indicators.json 更新</small></h2>
+    <div class="filters" id="grpFilter"></div>
+    <div class="tbl-wrap"><table id="indTbl"></table></div>
+  </section>
+
+  <section id="news" hidden>
+    <h2 class="sec">新聞衝擊<span class="bar">║</span><span class="t">全球新聞 → 主題 → 受惠 / 受壓標的</span><small id="newsMeta"></small></h2>
+    <div class="filters">
+      <div class="seg" id="langSeg"></div>
+      <span class="lab">方向</span><div class="seg" id="dirSeg"></div>
+      <input id="newsQ" placeholder="搜尋新聞關鍵字…" style="min-width:200px">
+    </div>
+    <div class="news-layout">
+      <div class="card themes" id="themeList"></div>
+      <div class="card news-list" id="newsList"></div>
+    </div>
+  </section>
+
+  <section id="screener" hidden>
+    <h2 class="sec">全市場篩選<span class="bar">║</span><span class="t">美、台、日、韓、港陸、歐、新興與跨資產</span><small id="scrMeta"></small></h2>
+    <div class="filters">
+      <div class="seg" id="presetSeg"></div>
+    </div>
+    <div class="filters">
+      <span class="lab">市場</span><select id="fMarket"></select>
+      <span class="lab">類別</span><select id="fAsset"></select>
+      <span class="lab">新聞主題</span><select id="fTheme"></select>
+      <input id="fQ" placeholder="代號 / 名稱 / 產業" style="min-width:180px">
+      <button id="fReset">清除</button>
+    </div>
+    <div class="tbl-wrap"><table id="scrTbl"></table></div>
+    <p class="small">綜合分數 = 動能百分位（1M / 3M / 6M 報酬平均）× 0.7 + 新聞淨分數百分位 × 0.3，站上 200 日均線加 5 分。新聞分數：近 72 小時新聞判定受惠 +1、受壓 −1（24 小時內 ×1.5）。</p>
+  </section>
+</main>
+
+<footer>
+  資料來源：Yahoo Finance（行情）、FRED 聖路易聯邦準備銀行（總經 / 利率 / 信用利差）、Google News、CNBC、MarketWatch、Yahoo Finance、鉅亨網（新聞）。
+  監控門檻依《全球總經與台美股量化監控體系》及季度檢視表設定；新聞主題與受惠標的為關鍵字規則自動判讀，僅供研究參考，不構成投資建議。
+</footer>
+<script src="app.js"></script>
+</body>
+</html>
