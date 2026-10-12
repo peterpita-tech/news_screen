@@ -27,6 +27,24 @@
 
 沒有免費公開 API 的指標，請編輯 [`config/manual_indicators.json`](config/manual_indicators.json)：`value` 填數值、`asof` 填資料日期。儀表板上這些指標會標示「手動」；尚未填寫的顯示「待輸入」，不列入情境判讀。
 
+
+### 台美全市場（串接籌碼結構掃描＋供應鏈）
+
+- 全部台股與美股：直接讀取 [籌碼結構掃描](https://peterpita-tech.github.io/Peterpita/)（zsigma-us / zsigma-tw）已發布的全市場資料，每市場只需一次請求
+- 台股的產業與供應鏈位置（上游 / 中游 / 下游 / 相關），以及所屬主題（CoWoS、HBM、ABF 載板…），來自 [semi_value_chain](https://peterpita-tech.github.io/semi_value_chain/web/)
+- 可依交易所、產業、供應鏈主題與位置篩選，分頁瀏覽；台股另計近 72 小時中文新聞提及次數
+
+### 原手動指標改為自動搜尋
+
+| 指標 | 自動來源 |
+|---|---|
+| 景氣燈號、融資維持率、外資台指期淨未平倉、外銷訂單、ISM PMI、S&P 500 預估本益比 | Google News 標題搜尋，以正則擷取數值（附原始標題可查核） |
+| 台積電、四大 CSP 資本支出 | Yahoo 財報季度資本支出，取近四季合計年增率 |
+| CoreWeave CDS | 代理：CRWV 距 3 個月高點跌幅換算（非真實 CDS） |
+| 台灣 CDS | 無免費來源，仍需手動 |
+
+自動值與 `config/manual_indicators.json` 的手動值取**資料日期較新者**，儀表板以「自動」/「手動」標示。
+
 ## 使用方式
 
 ### 1. 本機執行（Windows）

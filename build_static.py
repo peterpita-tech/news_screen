@@ -20,7 +20,7 @@ def main():
         shutil.rmtree(out)
     shutil.copytree(ROOT / "web", out)
     data = build.collect(demo=args.demo)
-    build.write(out / "data.json", data)
+    build.write_all(out, data)
     (out / ".nojekyll").write_text("")
     c = data["counts"]
     print(f"完成：{out}  標的 {c['tickers']}/{c['universe']}、新聞 {c['news']}、FRED {c['fred']}/{c['fred_total']}、錯誤 {data['error_count']}")

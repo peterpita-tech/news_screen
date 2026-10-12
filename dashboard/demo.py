@@ -90,3 +90,25 @@ def news_items():
     return [{"title": t, "link": "https://example.com/demo", "source": "示範資料", "lang": lang,
              "time": (now - timedelta(minutes=37 * i)).strftime("%Y-%m-%dT%H:%M:%SZ")}
             for i, (t, lang) in enumerate(HEADLINES)]
+
+
+def market():
+    rng = _rng("market")
+    rows = []
+    names = [("2330", "台積電", "上市"), ("3131", "弘塑", "上櫃"), ("3037", "欣興", "上市"), ("8070", "長華", "上市"),
+             ("2454", "聯發科", "上市"), ("6664", "群翊", "上櫃")]
+    for code, name, mkt in names:
+        rows.append({"code": code, "name": name, "mkt": mkt, "region": "台股", "sector": "Semiconductors",
+                     "close": round(rng.uniform(50, 1500), 1), "chg": round(rng.gauss(0, 2), 2),
+                     "biasMA": round(rng.gauss(2, 6), 2), "winPct": round(rng.uniform(20, 90), 1),
+                     "z": round(rng.gauss(0, 1.2), 2), "score": round(rng.uniform(5, 99), 1),
+                     "chain": [{"theme": "CoWoS", "group": "先進封裝", "pos": rng.choice(["上游", "中游", "下游", "相關"])}]})
+    for code, name, mkt, sec in [("NVDA", "NVIDIA Corp", "NASDAQ", "Technology"), ("AAPL", "Apple Inc", "NASDAQ", "Technology"),
+                                 ("JPM", "JPMorgan Chase", "NYSE", "Finance"), ("XOM", "Exxon Mobil", "NYSE", "Energy")]:
+        rows.append({"code": code, "name": name, "mkt": mkt, "region": "美股", "sector": sec, "mcap": rng.uniform(1e11, 4e12),
+                     "close": round(rng.uniform(50, 900), 2), "chg": round(rng.gauss(0, 2), 2),
+                     "biasMA": round(rng.gauss(2, 6), 2), "winPct": round(rng.uniform(20, 90), 1),
+                     "z": round(rng.gauss(0, 1.2), 2), "score": round(rng.uniform(5, 99), 1)})
+    return {"rows": rows, "meta": {"美股": {"date": "demo"}, "台股": {"date": "demo"}},
+            "chain_link": "https://peterpita-tech.github.io/semi_value_chain/web/", "chain_matched": 6,
+            "sources": {"美股": "https://peterpita-tech.github.io/Peterpita/", "台股": "https://peterpita-tech.github.io/Peterpita/tw/"}}

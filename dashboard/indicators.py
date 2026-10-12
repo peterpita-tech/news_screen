@@ -94,6 +94,8 @@ def _finish(row, value, asof, level, fmt="{:.2f}", status=None, spark_vals=None,
     row["status"] = status or STATUS[level]
     if row["manual"] and value is None:
         row["status"] = "待輸入"
+    if note and note.startswith(("自動", "代理")):
+        row["auto"] = True
     if spark_vals:
         row["spark"] = spark_vals
     if note:
@@ -308,15 +310,15 @@ def build(ctx: Ctx) -> list[dict]:
         proxy = f"代理：CRWV 股價 1 個月 {(h['close'][-1] / h['close'][-22] - 1) * 100:+.1f}%"
     add(_finish(r, v, d, lv, "{:+.0f} bp", note=(note + " " + proxy).strip()))
 
-    r = _base("csp_capex", "ai", "macro", "AI 需求", "四大 CSP 資本支出指引修正幅度", "%",
-              "需求上修：>0｜需求轉弱：下修 >10%",
+    r = _base("csp_capex", "ai", "macro", "AI 需求", "四大 CSP 資本支出年增率（近四季合計）", "%",
+              "需求擴張：年增 >0｜放緩：≤0｜需求轉弱：衰退 >10%",
               {2: "科技股降至中性", 1: "觀察：指引持平", 0: "需求上修：拉回分批加碼"},
               "SMH、台灣科技主題基金", "手動（法說會）")
     v, d, note = ctx.man("csp_capex_revision")
     lv = None if v is None else (2 if v < -10 else 1 if v <= 0 else 0)
     add(_finish(r, v, d, lv, "{:+.1f}%", note=note))
 
-    r = _base("tsmc_capex", "ai", "macro", "台積電資本支出", "台積電資本支出指引年增率", "%",
+    r = _base("tsmc_capex", "ai", "macro", "台積電資本支出", "台積電資本支出年增率（近四季）", "%",
               "正常：年增 >5%｜警戒：0–5%｜危機：下調 >10%",
               {2: "調降半導體設備、特化與封測部位，轉入傳產高股息或貨幣型", 1: "觀察供應鏈訂單", 0: "維持供應鏈配置"},
               "2330、SMH、台灣科技主題基金", "手動（台積電法說會）")

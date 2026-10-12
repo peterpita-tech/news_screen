@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from . import fetchers, indicators, news, scenarios, screener
+from . import autofill, fetchers, indicators, market, news, scenarios, screener
 from .themes import THEMES
 from .universe import META, OVERVIEW, UNIVERSE
 
@@ -73,14 +73,17 @@ def collect(demo: bool = False) -> dict:
         fred = {s: dm.fred_series(s) for s in FRED_IDS}
         news_items = [news.tag_item(i) for i in dm.news_items()]
         theme_sum = news.summarize(news_items)
+        mk = dm.market()
     else:
-        with ThreadPoolExecutor(max_workers=3) as ex:
+        with ThreadPoolExecutor(max_workers=4) as ex:
             fy = ex.submit(_yahoo_all, fetchers.yahoo_history, errors)
             ff = ex.submit(_fred_all, fetchers.fred_series, errors)
             fn = ex.submit(news.collect)
+            fm = ex.submit(market.collect, errors)
             yahoo, fred = fy.result(), ff.result()
             news_items, theme_sum, nerr = fn.result()
             errors.extend(nerr)
+            mk = fm.result()
 
     # FRED 失敗時，10 年期殖利率以 Yahoo ^TNX 備援
     if "DGS10" not in fred and "^TNX" in yahoo:
@@ -89,6 +92,9 @@ def collect(demo: bool = False) -> dict:
         errors.append("FRED DGS10 改用 Yahoo ^TNX 備援")
 
     manual = load_manual()
+    if not demo:
+        manual = autofill.merge(manual, autofill.collect(yahoo, errors))
+    market.news_mentions(mk["rows"], news_items)
     nscore = news.ticker_news_scores(news_items)
 
     # 標的 → 相關主題
@@ -125,7 +131,7 @@ def collect(demo: bool = False) -> dict:
         "generated_at_tpe": now.astimezone(TPE).strftime("%Y-%m-%d %H:%M"),
         "demo": demo,
         "elapsed_sec": round(time.time() - t0, 1),
-        "counts": {"tickers": len(rows), "universe": len(UNIVERSE), "news": len(news_items),
+        "counts": {"tickers": len(rows), "universe": len(UNIVERSE), "news": len(news_items), "market": len(mk["rows"]),
                    "fred": len(fred), "fred_total": len(FRED_IDS)},
         "groups": indicators.GROUPS,
         "indicators": ind_rows,
@@ -135,11 +141,21 @@ def collect(demo: bool = False) -> dict:
         "themes": theme_sum,
         "theme_names": {t["id"]: t["name"] for t in THEMES},
         "news": news_items,
+        "market": mk,
         "names": {s: m["name"] for s, m in META.items()},
         "manual_asof": {k: v.get("asof") for k, v in manual.items() if isinstance(v, dict)},
         "errors": errors[:80],
         "error_count": len(errors),
     }
+
+
+def write_all(folder: Path, data: dict) -> None:
+    """data.json（主資料）＋ market.json（台美全市場，體積大、前端延遲載入）。"""
+    data = dict(data)
+    mk = data.pop("market", None) or {"rows": []}
+    data["market_meta"] = {k: v for k, v in mk.items() if k != "rows"} | {"count": len(mk["rows"])}
+    write(folder / "market.json", mk)
+    write(folder / "data.json", data)
 
 
 def write(path: Path, data: dict) -> None:

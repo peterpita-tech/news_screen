@@ -16,7 +16,8 @@ from dashboard import build
 
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"
-CACHE = ROOT / "data" / "data.json"
+CACHE_DIR = ROOT / "data"
+CACHE = CACHE_DIR / "data.json"
 
 _lock = threading.Lock()
 _state = {"busy": False, "last_error": ""}
@@ -30,7 +31,7 @@ def refresh(demo: bool) -> None:
     try:
         print("[更新] 抓取新聞、行情與總經指標中…", flush=True)
         data = build.collect(demo=demo)
-        build.write(CACHE, data)
+        build.write_all(CACHE_DIR, data)
         _state["last_error"] = ""
         c = data["counts"]
         print(f"[更新完成] {data['generated_at_tpe']} 標的 {c['tickers']}/{c['universe']}、新聞 {c['news']} 則、"
@@ -59,10 +60,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split("?")[0]
-        if path in ("/data.json", "/api/data"):
-            if not CACHE.exists():
+        if path in ("/data.json", "/api/data", "/market.json"):
+            f = CACHE_DIR / ("market.json" if path == "/market.json" else "data.json")
+            if not f.exists():
                 return self._json({"loading": True, "busy": _state["busy"], "error": _state["last_error"]}, 503)
-            body = CACHE.read_bytes()
+            body = f.read_bytes()
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Cache-Control", "no-store")

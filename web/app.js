@@ -92,6 +92,7 @@ function render() {
   renderMonitor();
   renderNews();
   renderScreener();
+  loadMarket();
 }
 
 function renderOverview() {
@@ -154,7 +155,7 @@ function renderMonitor() {
     const allActs = Object.entries(r.actions).map(([k, v]) => `${{ 0: "正常", 1: "一級", 2: "二級" }[k]}：${v}`).join("\n");
     h += `<tr class="${r.level >= 1 ? "row-lv" + r.level : ""}">
       <td class="facet">${esc(r.label)}<small>${esc(gname[r.group] || "")}</small></td>
-      <td>${esc(r.metric)}${r.manual ? '<span class="badge man">手動</span>' : ""}<div class="src">${esc(r.source)}</div></td>
+      <td>${esc(r.metric)}${r.auto ? '<span class="badge auto">自動</span>' : r.manual ? '<span class="badge man">手動</span>' : ""}<div class="src">${esc(r.source)}</div></td>
       <td class="r"><div class="val num">${esc(r.display)}</div><div class="small" style="white-space:nowrap">${esc(r.asof || "")}</div></td>
       <td>${spark(r.spark, 100, 28, "var(--green)")}</td>
       <td><span class="thr">${esc(r.threshold)}</span>${r.note ? `<div class="small">${esc(r.note)}</div>` : ""}</td>
@@ -277,6 +278,95 @@ function gotoTicker(sym) {
   renderScreener();
   $("#screener").scrollIntoView();
 }
+
+// ---------------------------------------------------------------- 台美全市場
+let M = null;
+const mk = { region: "all", preset: "all", mkt: "all", sector: "all", chain: "all", pos: "all", q: "", sort: "score", desc: true, page: 0 };
+const MK_PAGE = 100;
+const ZS = { 台股: "https://peterpita-tech.github.io/Peterpita/tw/", 美股: "https://peterpita-tech.github.io/Peterpita/" };
+async function loadMarket() {
+  try {
+    const r = await fetch("market.json?t=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    M = await r.json();
+    renderMarket();
+  } catch (e) {
+    $("#mkMeta").textContent = "全市場資料載入失敗：" + e.message;
+  }
+}
+const MK_PRESETS = [
+  ["all", "全部", () => true],
+  ["strong", "強勢分數 ≥80", (r) => r.score >= 80],
+  ["aboveMA", "站上月線", (r) => r.aboveMA],
+  ["hiZ", "Z ≥ 2（急漲）", (r) => r.z >= 2],
+  ["news", "新聞提及", (r) => r.news > 0],
+  ["chain", "供應鏈標的", (r) => r.chain && r.chain.length],
+];
+function renderMarket() {
+  const rows = M.rows;
+  const meta = M.meta || {};
+  $("#mkMeta").textContent = `台股 ${rows.filter((r) => r.region === "台股").length} 檔（${meta.台股?.date || "—"}）｜美股 ${rows.filter((r) => r.region === "美股").length} 檔（${meta.美股?.date || "—"}）`;
+  $("#mkRegion").innerHTML = [["all", "台美全部"], ["台股", "台股"], ["美股", "美股"]].map(([k, n]) => `<button data-mkr="${k}" class="${mk.region === k ? "on" : ""}">${n}</button>`).join("");
+  $("#mkPreset").innerHTML = MK_PRESETS.map(([k, n]) => `<button data-mkp="${k}" class="${mk.preset === k ? "on" : ""}">${n}</button>`).join("");
+  const base = rows.filter((r) => mk.region === "all" || r.region === mk.region);
+  const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b), "zh-Hant"));
+  const fill = (sel, vals, cur, all) => { sel.innerHTML = `<option value="all">${all}</option>` + vals.map((v) => `<option ${v === cur ? "selected" : ""}>${esc(v)}</option>`).join(""); };
+  fill($("#mkMkt"), uniq(base.map((r) => r.mkt)), mk.mkt, "全部");
+  fill($("#mkSector"), uniq(base.map((r) => r.sector)), mk.sector, "全部產業");
+  fill($("#mkChain"), uniq(base.flatMap((r) => (r.chain || []).map((c) => c.theme))), mk.chain, "全部主題");
+  fill($("#mkPos"), ["上游", "中游", "下游", "相關"], mk.pos, "全部");
+  $("#mkQ").value = mk.q;
+  $("#mkNote").innerHTML = `資料來源：<a href="${ZS.美股}" target="_blank" rel="noopener">籌碼結構掃描（美股）</a>、<a href="${ZS.台股}" target="_blank" rel="noopener">籌碼結構掃描（台股）</a>；台股產業與供應鏈位置來自 <a href="${esc(M.chain_link)}" target="_blank" rel="noopener">semi_value_chain</a>。強勢分數 = Z 分數、月線乖離、贏家成本乖離、籌碼集中度與獲利比例的全市場百分位。新聞 = 近 72 小時中文標題提及公司名稱次數。`;
+  drawMarket();
+}
+function drawMarket() {
+  let rows = M.rows.filter((r) => mk.region === "all" || r.region === mk.region);
+  const p = MK_PRESETS.find((x) => x[0] === mk.preset);
+  rows = rows.filter(p[2]);
+  if (mk.mkt !== "all") rows = rows.filter((r) => r.mkt === mk.mkt);
+  if (mk.sector !== "all") rows = rows.filter((r) => r.sector === mk.sector);
+  if (mk.chain !== "all" || mk.pos !== "all") rows = rows.filter((r) => (r.chain || []).some((c) => (mk.chain === "all" || c.theme === mk.chain) && (mk.pos === "all" || c.pos === mk.pos)));
+  if (mk.q) { const q = mk.q.toLowerCase(); rows = rows.filter((r) => r.code.toLowerCase().includes(q) || (r.name || "").toLowerCase().includes(q)); }
+  const k = mk.sort, sgn = mk.desc ? -1 : 1;
+  rows.sort((a, b) => {
+    const x = a[k], y = b[k];
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return (typeof x === "string" ? x.localeCompare(y, "zh-Hant") : x - y) * sgn;
+  });
+  const pages = Math.max(1, Math.ceil(rows.length / MK_PAGE));
+  mk.page = Math.min(mk.page, pages - 1);
+  const view = rows.slice(mk.page * MK_PAGE, (mk.page + 1) * MK_PAGE);
+  const cols = [["code", "代號"], ["name", "名稱"], ["mkt", "交易所"], ["sector", "產業"], [null, "供應鏈位置"], ["close", "收盤", "r"], ["chg", "漲跌", "r"],
+    ["biasMA", "月線乖離", "r"], ["winPct", "獲利比例", "r"], ["z", "Z", "r"], ["score", "強勢分數", "r"], ["news", "新聞", "r"], [null, "連結"]];
+  let h = `<thead><tr>${cols.map(([key, n, c]) => key ? `<th class="sort ${c || ""}" data-mks="${key}">${n}${mk.sort === key ? `<span class="arr">${mk.desc ? "▼" : "▲"}</span>` : ""}</th>` : `<th>${n}</th>`).join("")}</tr></thead><tbody>`;
+  for (const r of view) {
+    const chain = (r.chain || []).slice(0, 4).map((c) => `<span class="pos pos-${esc(c.pos)}" title="${esc(c.group)}">${esc(c.theme)}·${esc(c.pos)}</span>`).join("") + ((r.chain || []).length > 4 ? `<span class="small">+${r.chain.length - 4}</span>` : "");
+    const links = `<a class="lnk" href="${ZS[r.region]}" target="_blank" rel="noopener">籌碼</a>` + (r.region === "台股" ? `<a class="lnk" href="${esc(M.chain_link)}" target="_blank" rel="noopener" title="到供應鏈頁面搜尋 ${esc(r.code)}">供應鏈</a>` : "");
+    h += `<tr><td class="num"><b>${esc(r.code)}</b></td><td>${esc(r.name)}</td><td class="small">${esc(r.mkt)}</td><td class="small">${esc(r.sector || "")}</td>
+      <td>${chain}</td><td class="r num">${fmtPrice(r.close)}</td><td class="r num">${fmtPct(r.chg, 2)}</td><td class="r num">${fmtPct(r.biasMA)}</td>
+      <td class="r num">${r.winPct == null ? "—" : r.winPct.toFixed(0) + "%"}</td><td class="r num">${r.z == null ? "—" : r.z.toFixed(2)}</td>
+      <td class="r num"><b>${r.score == null ? "—" : r.score.toFixed(0)}</b></td><td class="r num">${r.news ? `<b class="up">${r.news}</b>` : '<span class="small">—</span>'}</td><td>${links}</td></tr>`;
+  }
+  $("#mkTbl").innerHTML = h + "</tbody>";
+  $("#mkPager").innerHTML = `<span class="small">共 ${rows.length} 檔，第 ${mk.page + 1} / ${pages} 頁</span>
+    <button data-mkpg="0" ${mk.page === 0 ? "disabled" : ""}>« 第一頁</button><button data-mkpg="${mk.page - 1}" ${mk.page === 0 ? "disabled" : ""}>‹ 上一頁</button>
+    <button data-mkpg="${mk.page + 1}" ${mk.page >= pages - 1 ? "disabled" : ""}>下一頁 ›</button><button data-mkpg="${pages - 1}" ${mk.page >= pages - 1 ? "disabled" : ""}>最末頁 »</button>`;
+}
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-mkr],[data-mkp],[data-mks],[data-mkpg]");
+  if (!t || !M) return;
+  const d = t.dataset;
+  if (d.mkr) { Object.assign(mk, { region: d.mkr, mkt: "all", sector: "all", chain: "all", pos: "all", page: 0 }); return renderMarket(); }
+  if (d.mkp) { mk.preset = d.mkp; mk.page = 0; return renderMarket(); }
+  if (d.mkpg) { mk.page = +d.mkpg; drawMarket(); return $("#market").scrollIntoView(); }
+  if (d.mks) { if (mk.sort === d.mks) mk.desc = !mk.desc; else { mk.sort = d.mks; mk.desc = !["code", "name", "mkt", "sector"].includes(d.mks); } mk.page = 0; return drawMarket(); }
+});
+[["#mkMkt", "mkt"], ["#mkSector", "sector"], ["#mkChain", "chain"], ["#mkPos", "pos"]].forEach(([sel, key]) =>
+  $(sel).addEventListener("change", (e) => { mk[key] = e.target.value; mk.page = 0; drawMarket(); }));
+$("#mkQ").addEventListener("input", (e) => { mk.q = e.target.value.trim(); mk.page = 0; drawMarket(); });
+$("#mkReset").addEventListener("click", () => { Object.assign(mk, { region: "all", preset: "all", mkt: "all", sector: "all", chain: "all", pos: "all", q: "", page: 0 }); renderMarket(); });
 
 // ---------------------------------------------------------------- events
 document.addEventListener("click", (e) => {

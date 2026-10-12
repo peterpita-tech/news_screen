@@ -72,3 +72,43 @@ class BuildTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MarketAutofillTests(unittest.TestCase):
+    def test_parse_zs_data(self):
+        from dashboard import market
+        html = '<html><script>window.ZS_DATA = {"date":"2026-10-09","rows":[{"code":"2330","name":"台積電","s":"a};b"}]};</script></html>'
+        d = market.parse_zs_data(html)
+        self.assertEqual(d["rows"][0]["code"], "2330")
+
+    def test_parse_chain(self):
+        from dashboard import market
+        themes = [{"group": "先進封裝", "items": [{"name": "CoWoS", "md": "## 上游 (1)\n\n- **3167 大量** (x)\n\n## 下游 (1)\n- **3131 弘塑** (y)\n## 相關公司 (1)\n- **3037 欣興** (z)"}]}]
+        c = market.parse_chain(themes)
+        self.assertEqual(c["3167"][0]["pos"], "上游")
+        self.assertEqual(c["3131"][0]["pos"], "下游")
+        self.assertEqual(c["3037"][0]["pos"], "相關")
+
+    def test_extractors(self):
+        from dashboard import autofill as a
+        self.assertEqual(a._ndc("8月景氣燈號續亮紅燈 分數38分"), 38)
+        self.assertEqual(a._ism("ISM manufacturing PMI rises to 49.8 in September"), 49.8)
+        self.assertEqual(a._fut_oi("外資台指期淨空單增至32,150口"), -32150)
+        self.assertEqual(a._export("9月外銷訂單年減3.2%"), -3.2)
+        self.assertEqual(a._pct_in(100, 220)("大盤融資維持率降至158.3%"), 158.3)
+        self.assertIsNone(a._ndc("景氣燈號 100分"))
+
+    def test_merge_prefers_newer(self):
+        from dashboard import autofill as a
+        manual = {"ism_pmi": {"value": 48.0, "asof": "2026-08-01"}, "ndc_signal": {"value": None, "asof": None}}
+        auto = {"ism_pmi": {"value": 49.5, "asof": "2026-10-01", "note": "自動"}, "ndc_signal": {"value": 33, "asof": "2026-09-27", "note": "自動"}}
+        m = a.merge(manual, auto)
+        self.assertEqual(m["ism_pmi"]["value"], 49.5)
+        self.assertEqual(m["ndc_signal"]["value"], 33)
+        m = a.merge({"ism_pmi": {"value": 48.0, "asof": "2026-11-01"}}, auto)
+        self.assertEqual(m["ism_pmi"]["value"], 48.0)
+
+    def test_ttm_yoy(self):
+        from dashboard import autofill as a
+        pts = [(f"2025-0{i}-30", 10.0) for i in range(1, 5)] + [(f"2026-0{i}-30", 12.0) for i in range(1, 5)]
+        self.assertAlmostEqual(a._ttm_yoy(pts)[0], 20.0)
