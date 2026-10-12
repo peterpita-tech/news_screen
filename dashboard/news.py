@@ -24,7 +24,6 @@ SOURCES = [
     ("rss", "https://www.cnbc.com/id/100003114/device/rss/rss.html", "CNBC", "en"),
     ("rss", "https://www.cnbc.com/id/20910258/device/rss/rss.html", "CNBC", "en"),
     ("rss", "https://feeds.content.dowjones.io/public/rss/mw_topstories", "MarketWatch", "en"),
-    ("rss", "https://finance.yahoo.com/rss/topstories", "Yahoo Finance", "en"),
     ("cnyes", "", "鉅亨網", "zh"),
 ]
 for q in ["stock market", "Federal Reserve rates", "oil prices", "semiconductor AI chips", "China economy",
