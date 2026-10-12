@@ -82,6 +82,12 @@ def collect(demo: bool = False) -> dict:
             news_items, theme_sum, nerr = fn.result()
             errors.extend(nerr)
 
+    # FRED 失敗時，10 年期殖利率以 Yahoo ^TNX 備援
+    if "DGS10" not in fred and "^TNX" in yahoo:
+        h = yahoo["^TNX"]
+        fred["DGS10"] = list(zip(h["dates"], h["close"]))
+        errors.append("FRED DGS10 改用 Yahoo ^TNX 備援")
+
     manual = load_manual()
     nscore = news.ticker_news_scores(news_items)
 

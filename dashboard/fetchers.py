@@ -86,10 +86,32 @@ def yahoo_history(symbol: str, range_: str = "2y", interval: str = "1d") -> dict
 
 
 # ---------------------------------------------------------------- FRED
+def _fred_api(series_id: str, key: str) -> list[tuple[str, float]]:
+    url = ("https://api.stlouisfed.org/fred/series/observations?file_type=json"
+           f"&series_id={series_id}&api_key={urllib.parse.quote(key)}&observation_start=2018-01-01")
+    data = json.loads(http_get(url, timeout=20, retries=1))
+    out = []
+    for o in data.get("observations", []):
+        try:
+            out.append((o["date"], float(o["value"])))
+        except (KeyError, ValueError):
+            continue
+    if not out:
+        raise RuntimeError(f"FRED API {series_id}: 無資料")
+    return out
+
+
 def fred_series(series_id: str) -> list[tuple[str, float]]:
-    """FRED 公開 CSV（免 API key）。回傳 [(date, value)]，略過缺值。"""
-    url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
-    raw = http_get(url, timeout=30).decode("utf-8", "replace")
+    """FRED：有 FRED_API_KEY 環境變數時走官方 API，否則用公開 CSV。回傳 [(date, value)]，略過缺值。"""
+    key = os.environ.get("FRED_API_KEY", "").strip()
+    if key:
+        try:
+            return _fred_api(series_id, key)
+        except Exception:  # noqa: BLE001 - 退回公開 CSV
+            pass
+    url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}&cosd=2018-01-01"
+    # FRED 的 CDN 對「瀏覽器 UA 但缺瀏覽器標頭」的請求常直接掛住，改用工具型 UA
+    raw = http_get(url, timeout=20, retries=1, headers={"User-Agent": "curl/8.5.0", "Accept": "text/csv,*/*"}).decode("utf-8", "replace")
     rows = list(csv.reader(io.StringIO(raw)))
     out = []
     for r in rows[1:]:

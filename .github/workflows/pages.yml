@@ -28,7 +28,11 @@ jobs:
         run: python -m unittest discover tests
       - name: 抓取新聞 / 行情 / 總經指標並產生靜態網站
         run: python build_static.py --out site
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
