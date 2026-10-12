@@ -306,7 +306,7 @@ def build(ctx: Ctx) -> list[dict]:
     lv = None if v is None else (2 if v > 350 else 1 if v >= 150 else 0)
     h = ctx.yh("CRWV")
     proxy = ""
-    if h and len(h["close"]) > 22:
+    if h and len(h["close"]) > 22 and not note.startswith("代理"):
         proxy = f"代理：CRWV 股價 1 個月 {(h['close'][-1] / h['close'][-22] - 1) * 100:+.1f}%"
     add(_finish(r, v, d, lv, "{:+.0f} bp", note=(note + " " + proxy).strip()))
 

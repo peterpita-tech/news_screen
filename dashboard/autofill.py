@@ -10,6 +10,7 @@ import json
 import re
 import time
 import urllib.parse
+from datetime import datetime
 
 from . import fetchers
 
@@ -84,32 +85,56 @@ def _cds(t):
 
 
 SEARCH = {
-    "ndc_signal": ("景氣燈號 分", "zh", 45, [["燈"]], _ndc),
-    "ism_pmi": ("ISM manufacturing PMI", "en", 40, [["ISM"], ["PMI", "manufactur"]], _ism),
-    "spx_fwd_pe": ("S&P 500 forward P/E ratio", "en", 21, [["forward", "P/E"], ["forward", "PE"]], _fwd_pe),
-    "margin_ratio": ("大盤融資維持率", "zh", 10, [["維持率"]], _pct_in(100, 220)),
-    "foreign_futures_net_oi": ("外資 台指期 淨空單 口", "zh", 7, [["外資"]], _fut_oi),
-    "export_orders_yoy": ("外銷訂單 年增", "zh", 45, [["外銷訂單"]], _export),
+    # key: ([查詢字串…], 語言, 回溯天數, 標題必含字組, 排除字, 擷取函式, 需檢查資料月份)
+    "ndc_signal": (["景氣燈號 分", "景氣對策信號 分"], "zh", 45, [["燈"], ["信號"]], [], _ndc, True),
+    "ism_pmi": (["ISM manufacturing PMI", "ISM manufacturing index"], "en", 40, [["ISM", "manufactur"]],
+                ["non-manufacturing", "services", "nonmanufacturing"], _ism, False),
+    "spx_fwd_pe": (["S&P 500 forward P/E ratio", "forward 12-month P/E ratio S&P 500", "S&P 500 forward PE FactSet"],
+                   "en", 30, [["forward", "P/E"], ["forward", "PE"], ["forward", "price-to-earnings"]], [], _fwd_pe, False),
+    "margin_ratio": (["大盤融資維持率", "融資維持率 大盤", "整體融資維持率"], "zh", 14, [["維持率"]], [], _pct_in(100, 220), False),
+    "foreign_futures_net_oi": (["外資 台指期 淨空單 口", "外資 期貨 淨空單", "外資台指期 空單 口數", "外資 淨多單 台指期"],
+                               "zh", 7, [["外資"]], [], _fut_oi, False),
+    "export_orders_yoy": (["外銷訂單 年增", "外銷訂單 年減"], "zh", 45, [["外銷訂單"]], [], _export, True),
 }
 
 
-def _match_title(t: str, must: list[list[str]]) -> bool:
-    tl = t.lower()
-    return any(all(w.lower() in tl for w in grp) for grp in must)
+def _month_ok(title: str, published: str) -> bool:
+    """標題提到「N月」時，須為發布日前 1～2 個月的資料，避免抓到舊月份的回顧報導。"""
+    m = re.search(r"(\d{1,2})\s*月", title)
+    if not m:
+        return True
+    try:
+        pub = datetime.strptime(published[:10], "%Y-%m-%d") if published else datetime.now()
+    except ValueError:
+        pub = datetime.now()
+    month = int(m.group(1))
+    ok = {((pub.month - k - 1) % 12) + 1 for k in (0, 1, 2)}  # 當月、前 1、前 2 個月
+    return month in ok
 
 
 def search_values(errors: list[str]) -> dict:
     out = {}
-    for key, (q, lang, days, must, fn) in SEARCH.items():
+    for key, (queries, lang, days, must, exclude, fn, check_month) in SEARCH.items():
         try:
-            for it in _search(q, lang, days):
-                if not _match_title(it["title"], must):
+            seen, items = set(), []
+            for q in queries:
+                for it in _search(q, lang, days):
+                    if it["title"] not in seen:
+                        seen.add(it["title"]); items.append(it)
+                if any(_match_title(i["title"], must) for i in items):
+                    break
+            items.sort(key=lambda x: x["time"] or "", reverse=True)
+            for it in items:
+                t = it["title"]
+                if not _match_title(t, must) or any(x.lower() in t.lower() for x in exclude):
                     continue
-                v = fn(it["title"])
+                if check_month and not _month_ok(t, it["time"]):
+                    continue
+                v = fn(t)
                 if v is None:
                     continue
                 out[key] = {"value": v, "asof": (it["time"] or "")[:10] or None, "auto": True,
-                            "note": f"自動搜尋：{it['title']}（{it['source']}）", "link": it["link"]}
+                            "note": f"自動搜尋：{t}（{it['source']}）", "link": it["link"]}
                 break
         except Exception as e:  # noqa: BLE001
             errors.append(f"自動搜尋 {key}：{str(e)[:100]}")

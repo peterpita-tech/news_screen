@@ -97,6 +97,9 @@ class MarketAutofillTests(unittest.TestCase):
         self.assertEqual(a._export("9月外銷訂單年減3.2%"), -3.2)
         self.assertEqual(a._pct_in(100, 220)("大盤融資維持率降至158.3%"), 158.3)
         self.assertIsNone(a._ndc("景氣燈號 100分"))
+        self.assertFalse(a._month_ok("4月外銷訂單年增48%", "2026-09-24"))
+        self.assertTrue(a._month_ok("8月外銷訂單年增20%", "2026-09-24"))
+        self.assertTrue(a._month_ok("12月景氣燈號", "2026-01-27"))
 
     def test_merge_prefers_newer(self):
         from dashboard import autofill as a
