@@ -128,35 +128,40 @@ def _quarterly_capex(sym: str) -> list[tuple[str, float]]:
             if p and p.get("reportedValue"):
                 pts.append((p["asOfDate"], abs(float(p["reportedValue"]["raw"]))))
     pts.sort()
-    if len(pts) < 8:
-        raise ValueError(f"{sym} 季度資本支出不足 8 季")
+    if len(pts) < 5:
+        raise ValueError(f"{sym} 季度資本支出不足 5 季（取得 {len(pts)} 季）")
     return pts
 
 
 def _ttm_yoy(pts):
-    last4 = sum(v for _, v in pts[-4:])
-    prev4 = sum(v for _, v in pts[-8:-4])
-    return (last4 / prev4 - 1) * 100, pts[-1][0], last4
+    """有 8 季取近四季合計年增率；Yahoo 常只給 5 季，則取最新一季對去年同季。回傳 (yoy, 日期, 基準值, 說明)。"""
+    if len(pts) >= 8:
+        cur, prev = sum(v for _, v in pts[-4:]), sum(v for _, v in pts[-8:-4])
+        return (cur / prev - 1) * 100, pts[-1][0], cur, "近四季合計"
+    cur, prev = pts[-1][1], pts[-5][1]
+    return (cur / prev - 1) * 100, pts[-1][0], cur, "最新一季對去年同季"
 
 
 def capex_values(errors: list[str]) -> dict:
     out = {}
     try:
-        yoy, d, ttm = _ttm_yoy(_quarterly_capex("TSM"))
+        yoy, d, base, how = _ttm_yoy(_quarterly_capex("TSM"))
         out["tsmc_capex_yoy"] = {"value": round(yoy, 1), "asof": d, "auto": True,
-                                 "note": f"自動：台積電近四季實際資本支出年增率（TTM {ttm / 1e9:,.1f}B，Yahoo 財報）"}
+                                 "note": f"自動：台積電實際資本支出年增率（{how}，{base / 1e9:,.1f}B，Yahoo 財報）"}
     except Exception as e:  # noqa: BLE001
         errors.append(f"台積電資本支出：{str(e)[:100]}")
     try:
         cur = prev = 0.0
-        dates = []
+        dates, hows = [], set()
         for s in ("MSFT", "GOOGL", "AMZN", "META"):
             pts = _quarterly_capex(s)
-            cur += sum(v for _, v in pts[-4:])
-            prev += sum(v for _, v in pts[-8:-4])
+            n = 4 if len(pts) >= 8 else 1
+            cur += sum(v for _, v in pts[-n:])
+            prev += sum(v for _, v in pts[-2 * n:-n]) if n == 4 else pts[-5][1]
             dates.append(pts[-1][0])
+            hows.add("近四季合計" if n == 4 else "最新一季對去年同季")
         out["csp_capex_revision"] = {"value": round((cur / prev - 1) * 100, 1), "asof": max(dates), "auto": True,
-                                     "note": f"自動：四大 CSP 近四季實際資本支出合計年增率（TTM {cur / 1e9:,.0f}B，Yahoo 財報）"}
+                                     "note": f"自動：四大 CSP 實際資本支出合計年增率（{'／'.join(sorted(hows))}，{cur / 1e9:,.0f}B，Yahoo 財報）"}
     except Exception as e:  # noqa: BLE001
         errors.append(f"CSP 資本支出：{str(e)[:100]}")
     return out

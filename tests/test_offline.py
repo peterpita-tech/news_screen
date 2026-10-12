@@ -112,3 +112,4 @@ class MarketAutofillTests(unittest.TestCase):
         from dashboard import autofill as a
         pts = [(f"2025-0{i}-30", 10.0) for i in range(1, 5)] + [(f"2026-0{i}-30", 12.0) for i in range(1, 5)]
         self.assertAlmostEqual(a._ttm_yoy(pts)[0], 20.0)
+        self.assertAlmostEqual(a._ttm_yoy(pts[-5:])[0], 20.0)  # 只有 5 季：最新一季對去年同季
