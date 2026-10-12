@@ -101,6 +101,21 @@ class MarketAutofillTests(unittest.TestCase):
         self.assertTrue(a._month_ok("8月外銷訂單年增20%", "2026-09-24"))
         self.assertTrue(a._month_ok("12月景氣燈號", "2026-01-27"))
 
+    def test_search_values_end_to_end(self):
+        from dashboard import autofill as a
+        fake = {
+            "景氣燈號 分": [{"title": "4月景氣燈號 30分", "time": "2026-09-27T01:00:00Z", "source": "x", "link": ""},
+                          {"title": "8月景氣燈號亮紅燈 41分", "time": "2026-09-26T01:00:00Z", "source": "x", "link": ""}],
+            "ISM manufacturing PMI": [{"title": "ISM non-manufacturing PMI 54.9", "time": "2026-10-05T00:00:00Z", "source": "x", "link": ""},
+                                      {"title": "ISM manufacturing PMI rises to 49.1", "time": "2026-10-01T00:00:00Z", "source": "x", "link": ""}],
+        }
+        with mock.patch.object(a, "_search", side_effect=lambda q, lang, days: fake.get(q, [])):
+            errs = []
+            out = a.search_values(errs)
+        self.assertEqual(errs, [])
+        self.assertEqual(out["ndc_signal"]["value"], 41)
+        self.assertEqual(out["ism_pmi"]["value"], 49.1)
+
     def test_merge_prefers_newer(self):
         from dashboard import autofill as a
         manual = {"ism_pmi": {"value": 48.0, "asof": "2026-08-01"}, "ndc_signal": {"value": None, "asof": None}}

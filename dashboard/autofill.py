@@ -112,6 +112,11 @@ def _month_ok(title: str, published: str) -> bool:
     return month in ok
 
 
+def _match_title(t: str, must: list[list[str]]) -> bool:
+    tl = t.lower()
+    return any(all(w.lower() in tl for w in grp) for grp in must)
+
+
 def search_values(errors: list[str]) -> dict:
     out = {}
     for key, (queries, lang, days, must, exclude, fn, check_month) in SEARCH.items():
