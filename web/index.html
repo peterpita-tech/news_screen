@@ -17,8 +17,7 @@
       <a href="#scenario">情境判讀</a>
       <a href="#monitor">指標監控</a>
       <a href="#news">新聞衝擊</a>
-      <a href="#screener">跨資產篩選</a>
-      <a href="#market">台美全市場</a>
+      <a href="#screener">全市場篩選</a>
     </nav>
     <div class="meta">
       <span id="updated">載入中…</span>
@@ -66,34 +65,23 @@
   </section>
 
   <section id="screener" hidden>
-    <h2 class="sec">跨資產篩選<span class="bar">║</span><span class="t">美、台、日、韓、港陸、歐、新興與跨資產</span><small id="scrMeta"></small></h2>
+    <h2 class="sec">全市場篩選<span class="bar">║</span><span class="t">全部台股、美股＋日韓港歐新興與跨資產</span><small id="scrMeta"></small></h2>
     <div class="filters">
       <div class="seg" id="presetSeg"></div>
     </div>
     <div class="filters">
       <span class="lab">市場</span><select id="fMarket"></select>
+      <span class="lab">交易所</span><select id="fExch"></select>
       <span class="lab">類別</span><select id="fAsset"></select>
+      <span class="lab">產業</span><select id="fSector" style="max-width:200px"></select>
       <span class="lab">新聞主題</span><select id="fTheme"></select>
-      <input id="fQ" placeholder="代號 / 名稱 / 產業" style="min-width:180px">
+      <span class="lab">供應鏈</span><select id="fChain"></select><select id="fPos"></select>
+      <input id="fQ" placeholder="代號 / 名稱 / 產業" style="min-width:160px">
       <button id="fReset">清除</button>
     </div>
     <div class="tbl-wrap"><table id="scrTbl"></table></div>
-    <p class="small">綜合分數 = 動能百分位（1M / 3M / 6M 報酬平均）× 0.7 + 新聞淨分數百分位 × 0.3，站上 200 日均線加 5 分。新聞分數：近 72 小時新聞判定受惠 +1、受壓 −1（24 小時內 ×1.5）。</p>
-  </section>
-  <section id="market" hidden>
-    <h2 class="sec">台美全市場<span class="bar">║</span><span class="t">全部台股、美股＋台股供應鏈</span><small id="mkMeta">載入中…</small></h2>
-    <div class="filters"><div class="seg" id="mkRegion"></div><div class="seg" id="mkPreset"></div></div>
-    <div class="filters">
-      <span class="lab">交易所</span><select id="mkMkt"></select>
-      <span class="lab">產業</span><select id="mkSector" style="max-width:220px"></select>
-      <span class="lab">供應鏈主題</span><select id="mkChain"></select>
-      <span class="lab">位置</span><select id="mkPos"></select>
-      <input id="mkQ" placeholder="代號 / 名稱" style="min-width:150px">
-      <button id="mkReset">清除</button>
-    </div>
-    <div class="tbl-wrap"><table id="mkTbl"></table></div>
-    <div class="filters" style="margin-top:8px" id="mkPager"></div>
-    <p class="small" id="mkNote"></p>
+    <div class="filters" style="margin-top:8px" id="scrPager"></div>
+    <p class="small" id="scrNote"></p>
   </section>
 </main>
 

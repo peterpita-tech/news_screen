@@ -6,7 +6,7 @@ let D = null;
 let isLocal = false;
 const state = {
   group: "all", lang: "all", dir: "all", newsQ: "", theme: null,
-  preset: "all", market: "all", asset: "all", fTheme: "all", q: "", sort: "score", desc: true,
+  preset: "all", market: "all", exch: "all", asset: "all", sector: "all", fTheme: "all", chain: "all", pos: "all", q: "", sort: "score", desc: true, page: 0,
 };
 
 // ---------------------------------------------------------------- utils
@@ -80,6 +80,11 @@ async function doRefresh() {
 // ---------------------------------------------------------------- render
 function render() {
   $("#loading").hidden = true;
+  D.newsSyms = {};
+  for (const n of D.news) for (const t of n.tags) {
+    const set = (D.newsSyms[t.theme] = D.newsSyms[t.theme] || new Set());
+    for (const k of ["mk_benefit", "mk_hurt", "mk_related"]) for (const x of n[k] || []) set.add(x);
+  }
   document.querySelectorAll("main section").forEach((s) => (s.hidden = false));
   const c = D.counts;
   $("#updated").innerHTML = `更新：<b>${esc(D.generated_at_tpe)}</b>（台北）｜標的 ${c.tickers}｜新聞 ${c.news} 則`;
@@ -181,6 +186,8 @@ function renderNews() {
       <div class="hbar"><i style="width:${(t.count / maxC * 100).toFixed(0)}%"></i></div>
       ${t.benefit.length ? `<div class="chips"><span class="lbl">受惠</span>${tickerChips(t.benefit.slice(0, 8), "b")}</div>` : ""}
       ${t.hurt.length ? `<div class="chips"><span class="lbl">受壓</span>${tickerChips(t.hurt.slice(0, 8), "h")}</div>` : ""}
+      ${(t.mk_benefit || []).length ? `<div class="chips"><span class="lbl">台美個股▲</span>${tickerChips(t.mk_benefit, "b")}</div>` : ""}
+      ${(t.mk_hurt || []).length ? `<div class="chips"><span class="lbl">台美個股▼</span>${tickerChips(t.mk_hurt, "h")}</div>` : ""}
     </div>`).join("");
   let items = D.news;
   if (state.theme) items = items.filter((n) => n.tags.some((t) => t.theme === state.theme));
@@ -200,197 +207,165 @@ function renderNews() {
       ${n.benefit.length ? `<div class="chips"><span class="lbl">受惠</span>${tickerChips(n.benefit, "b")}</div>` : ""}
       ${n.hurt.length ? `<div class="chips"><span class="lbl">受壓</span>${tickerChips(n.hurt, "h")}</div>` : ""}
       ${n.related && n.related.length ? `<div class="chips"><span class="lbl">相關</span>${tickerChips(n.related, "")}</div>` : ""}
+      ${(n.mk_benefit || []).length ? `<div class="chips"><span class="lbl">台美個股▲</span>${tickerChips(n.mk_benefit, "b")}</div>` : ""}
+      ${(n.mk_hurt || []).length ? `<div class="chips"><span class="lbl">台美個股▼</span>${tickerChips(n.mk_hurt, "h")}</div>` : ""}
+      ${(n.mk_related || []).length ? `<div class="chips"><span class="lbl">點名 / 相關</span>${tickerChips(n.mk_related, "")}</div>` : ""}
       ${n.indicators.length ? `<div class="chips"><span class="lbl">監控</span>${n.indicators.map((k) => `<span class="chip i" data-ind="${k}">${esc(indName[k] || k)}</span>`).join("")}</div>` : ""}
     </div>`).join("") || `<div class="nw small">沒有符合條件的新聞</div>`;
 }
 
-const PRESETS = [
-  ["all", "全部", () => true],
-  ["score", "綜合前 30", null],
-  ["momentum", "強勢動能", (r) => r.above200 && r.chg3m > 10],
-  ["newsUp", "新聞受惠", (r) => r.news > 0],
-  ["newsDown", "新聞受壓", (r) => r.news < 0],
-  ["overbought", "超買警戒（乖離>25% 或 RSI>75）", (r) => r.bias240 > 25 || r.rsi14 > 75],
-  ["oversold", "超跌（RSI<30）", (r) => r.rsi14 != null && r.rsi14 < 30],
-  ["nearHigh", "接近 52 週高點", (r) => r.from_high != null && r.from_high > -3],
-  ["breakdown", "跌破 200 日線", (r) => r.above200 === false],
-];
-const COLS = [
-  ["symbol", "代號"], ["name", "名稱"], ["market", "市場"], ["sector", "產業 / 主題"],
-  ["last", "最新價", "r"], ["chg1d", "1日", "r"], ["chg1m", "1月", "r"], ["chg3m", "3月", "r"], ["ytd", "今年", "r"],
-  ["bias240", "年線乖離", "r"], ["rsi14", "RSI", "r"], ["from_high", "距52週高", "r"],
-  ["news", "新聞分數", "r"], ["score", "綜合分數", "r"], ["spark", "近 3 月走勢"],
-];
-
-function renderScreener() {
-  const uniq = (k) => [...new Set(D.screener.map((r) => r[k]))];
-  const opt = (sel, vals, cur, allLabel) => {
-    sel.innerHTML = `<option value="all">${allLabel}</option>` + vals.map((v) => `<option value="${esc(v[0] ?? v)}" ${cur === (v[0] ?? v) ? "selected" : ""}>${esc(v[1] ?? v)}</option>`).join("");
-  };
-  opt($("#fMarket"), uniq("market"), state.market, "全部市場");
-  opt($("#fAsset"), uniq("asset"), state.asset, "全部類別");
-  opt($("#fTheme"), Object.entries(D.theme_names), state.fTheme, "全部主題");
-  $("#fQ").value = state.q;
-  $("#presetSeg").innerHTML = PRESETS.map(([k, n]) => `<button data-preset="${k}" class="${state.preset === k ? "on" : ""}">${esc(n)}</button>`).join("");
-  drawScreenerTable();
-}
-
-function drawScreenerTable() {
-  let rows = D.screener.slice();
-  const p = PRESETS.find((x) => x[0] === state.preset);
-  if (p && p[2]) rows = rows.filter(p[2]);
-  if (state.market !== "all") rows = rows.filter((r) => r.market === state.market);
-  if (state.asset !== "all") rows = rows.filter((r) => r.asset === state.asset);
-  if (state.fTheme !== "all") rows = rows.filter((r) => r.themes.includes(state.fTheme));
-  if (state.q) {
-    const q = state.q.toLowerCase();
-    rows = rows.filter((r) => [r.symbol, r.name, r.sector, r.market].some((x) => String(x).toLowerCase().includes(q)));
-  }
-  const k = state.sort, sgn = state.desc ? -1 : 1;
-  rows.sort((a, b) => {
-    const x = a[k], y = b[k];
-    if (x == null && y == null) return 0;
-    if (x == null) return 1;
-    if (y == null) return -1;
-    return (typeof x === "string" ? x.localeCompare(y, "zh-Hant") : x - y) * sgn;
-  });
-  if (state.preset === "score") rows = rows.filter((r) => r.score != null).sort((a, b) => b.score - a.score).slice(0, 30);
-  $("#scrMeta").textContent = `篩選結果 ${rows.length} / ${D.screener.length} 檔`;
-  let h = `<thead><tr>${COLS.map(([key, n, cls]) => `<th class="sort ${cls || ""}" data-sort="${key}">${n}${state.sort === key ? `<span class="arr">${state.desc ? "▼" : "▲"}</span>` : ""}</th>`).join("")}</tr></thead><tbody>`;
-  for (const r of rows) {
-    const bias = r.bias240 == null ? "—" : `<span class="${r.bias240 > 35 ? "lv2" : r.bias240 > 25 ? "lv1" : ""}" style="font-weight:${r.bias240 > 25 ? 800 : 400}">${r.bias240 > 0 ? "+" : ""}${r.bias240.toFixed(1)}%</span>`;
-    const rsi = r.rsi14 == null ? "—" : `<span style="font-weight:${r.rsi14 > 70 || r.rsi14 < 30 ? 800 : 400}" class="${r.rsi14 > 70 ? "lv1" : r.rsi14 < 30 ? "lv0" : ""}">${r.rsi14.toFixed(0)}</span>`;
-    const news = r.news ? `<span class="${r.news > 0 ? "up" : "down"}" style="font-weight:700">${r.news > 0 ? "+" : ""}${r.news}</span>` : '<span class="small">0</span>';
-    h += `<tr>
-      <td class="num"><b>${esc(r.symbol)}</b></td><td>${esc(r.name)}</td><td>${esc(r.market)}</td>
-      <td class="small">${esc(r.sector)}</td>
-      <td class="r num">${fmtPrice(r.last)}</td><td class="r num">${fmtPct(r.chg1d, 2)}</td><td class="r num">${fmtPct(r.chg1m)}</td>
-      <td class="r num">${fmtPct(r.chg3m)}</td><td class="r num">${fmtPct(r.ytd)}</td>
-      <td class="r num">${bias}</td><td class="r num">${rsi}</td><td class="r num">${fmtPct(r.from_high)}</td>
-      <td class="r num">${news}</td><td class="r num"><b>${r.score == null ? "—" : r.score.toFixed(0)}</b></td>
-      <td>${spark(r.spark, 100, 24)}</td></tr>`;
-  }
-  $("#scrTbl").innerHTML = h + "</tbody>";
-}
-
-function gotoTicker(sym) {
-  Object.assign(state, { preset: "all", market: "all", asset: "all", fTheme: "all", q: sym });
-  renderScreener();
-  $("#screener").scrollIntoView();
-}
-
-// ---------------------------------------------------------------- 台美全市場
+// ---------------------------------------------------------------- 跨資產＋台美全市場篩選
 let M = null;
-const mk = { region: "all", preset: "all", mkt: "all", sector: "all", chain: "all", pos: "all", q: "", sort: "score", desc: true, page: 0 };
-const MK_PAGE = 100;
-const ZS = { 台股: "https://peterpita-tech.github.io/Peterpita/tw/", 美股: "https://peterpita-tech.github.io/Peterpita/" };
+const PAGE = 100;
+const ZS = { 台灣: "https://peterpita-tech.github.io/Peterpita/tw/", 美國: "https://peterpita-tech.github.io/Peterpita/" };
 async function loadMarket() {
   try {
     const r = await fetch("market.json?t=" + Date.now(), { cache: "no-store" });
     if (!r.ok) throw new Error("HTTP " + r.status);
     M = await r.json();
-    renderMarket();
+    for (const x of M.rows) if (!D.names[x.symbol]) D.names[x.symbol] = x.name;
   } catch (e) {
-    $("#mkMeta").textContent = "全市場資料載入失敗：" + e.message;
+    M = { rows: [], error: e.message };
   }
+  renderScreener();
 }
-const MK_PRESETS = [
+const allRows = () => (M ? D.screener.concat(M.rows) : D.screener);
+const PRESETS = [
   ["all", "全部", () => true],
-  ["strong", "強勢分數 ≥80", (r) => r.score >= 80],
-  ["aboveMA", "站上月線", (r) => r.aboveMA],
-  ["hiZ", "Z ≥ 2（急漲）", (r) => r.z >= 2],
-  ["news", "新聞提及", (r) => r.news > 0],
+  ["score", "綜合前 50", null],
+  ["momentum", "強勢動能", (r) => (r.above200 && r.chg3m > 10) || r.zscore >= 85],
+  ["newsUp", "新聞受惠", (r) => r.news > 0],
+  ["newsDown", "新聞受壓", (r) => r.news < 0],
+  ["mention", "新聞點名", (r) => r.mentions > 0],
   ["chain", "供應鏈標的", (r) => r.chain && r.chain.length],
+  ["aboveMA", "站上月線", (r) => r.aboveMA === true],
+  ["overbought", "超買警戒", (r) => r.bias240 > 25 || r.rsi14 > 75 || r.z >= 2.5],
+  ["oversold", "超跌（RSI<30）", (r) => r.rsi14 != null && r.rsi14 < 30],
+  ["nearHigh", "接近 52 週高點", (r) => r.from_high != null && r.from_high > -3],
 ];
-function renderMarket() {
-  const rows = M.rows;
-  const meta = M.meta || {};
-  $("#mkMeta").textContent = `台股 ${rows.filter((r) => r.region === "台股").length} 檔（${meta.台股?.date || "—"}）｜美股 ${rows.filter((r) => r.region === "美股").length} 檔（${meta.美股?.date || "—"}）`;
-  $("#mkRegion").innerHTML = [["all", "台美全部"], ["台股", "台股"], ["美股", "美股"]].map(([k, n]) => `<button data-mkr="${k}" class="${mk.region === k ? "on" : ""}">${n}</button>`).join("");
-  $("#mkPreset").innerHTML = MK_PRESETS.map(([k, n]) => `<button data-mkp="${k}" class="${mk.preset === k ? "on" : ""}">${n}</button>`).join("");
-  const base = rows.filter((r) => mk.region === "all" || r.region === mk.region);
+const COLS = [
+  ["symbol", "代號"], ["name", "名稱"], ["market", "市場"], ["sector", "產業 / 供應鏈"],
+  ["last", "最新價", "r"], ["chg1d", "1日", "r"], ["chg1m", "1月", "r"], ["chg3m", "3月", "r"], ["ytd", "今年", "r"],
+  ["bias240", "年線乖離", "r"], ["biasMA", "月線乖離", "r"], ["rsi14", "RSI", "r"], ["winPct", "獲利比例", "r"], ["zscore", "籌碼強勢", "r"],
+  ["news", "新聞分數", "r"], ["score", "綜合分數", "r"], ["spark", "走勢 / 連結"],
+];
+const SORT_TEXT = ["symbol", "name", "market", "sector"];
+
+function renderScreener() {
+  const rows = allRows();
   const uniq = (arr) => [...new Set(arr.filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b), "zh-Hant"));
-  const fill = (sel, vals, cur, all) => { sel.innerHTML = `<option value="all">${all}</option>` + vals.map((v) => `<option ${v === cur ? "selected" : ""}>${esc(v)}</option>`).join(""); };
-  fill($("#mkMkt"), uniq(base.map((r) => r.mkt)), mk.mkt, "全部");
-  fill($("#mkSector"), uniq(base.map((r) => r.sector)), mk.sector, "全部產業");
-  fill($("#mkChain"), uniq(base.flatMap((r) => (r.chain || []).map((c) => c.theme))), mk.chain, "全部主題");
-  fill($("#mkPos"), ["上游", "中游", "下游", "相關"], mk.pos, "全部");
-  $("#mkQ").value = mk.q;
-  $("#mkNote").innerHTML = `資料來源：<a href="${ZS.美股}" target="_blank" rel="noopener">籌碼結構掃描（美股）</a>、<a href="${ZS.台股}" target="_blank" rel="noopener">籌碼結構掃描（台股）</a>；台股產業與供應鏈位置來自 <a href="${esc(M.chain_link)}" target="_blank" rel="noopener">semi_value_chain</a>。強勢分數 = Z 分數、月線乖離、贏家成本乖離、籌碼集中度與獲利比例的全市場百分位。新聞 = 近 72 小時中文標題提及公司名稱次數。`;
-  drawMarket();
+  const opt = (sel, vals, cur, allLabel) => {
+    sel.innerHTML = `<option value="all">${allLabel}</option>` + vals.map((v) => `<option value="${esc(v[0] ?? v)}" ${cur === (v[0] ?? v) ? "selected" : ""}>${esc(v[1] ?? v)}</option>`).join("");
+  };
+  const mkts = uniq(rows.map((r) => r.market));
+  opt($("#fMarket"), mkts, state.market, "全部市場");
+  opt($("#fExch"), uniq(rows.filter((r) => state.market === "all" || r.market === state.market).map((r) => r.exch)), state.exch, "全部");
+  opt($("#fAsset"), uniq(rows.map((r) => r.asset)), state.asset, "全部類別");
+  opt($("#fSector"), uniq(rows.filter((r) => state.market === "all" || r.market === state.market).map((r) => r.sector)), state.sector, "全部產業");
+  opt($("#fTheme"), Object.entries(D.theme_names), state.fTheme, "全部主題");
+  opt($("#fChain"), uniq(rows.flatMap((r) => (r.chain || []).map((c) => c.theme))), state.chain, "全部");
+  opt($("#fPos"), ["上游", "中游", "下游", "相關"], state.pos, "全部");
+  $("#fQ").value = state.q;
+  $("#presetSeg").innerHTML = PRESETS.map(([k, n]) => `<button data-preset="${k}" class="${state.preset === k ? "on" : ""}">${esc(n)}</button>`).join("");
+  const mm = D.market_meta || {};
+  const meta = mm.meta || {};
+  $("#scrNote").innerHTML = (M && M.error ? `<span class="lv lv2">全市場資料載入失敗：${esc(M.error)}</span><br>` : "") +
+    `跨資產（約 180 檔，含指數、ETF、債券、商品、外匯）：綜合分數 = 動能百分位（1M / 3M / 6M）× 0.7 + 新聞分數百分位 × 0.3，站上 200 日線加 5 分。` +
+    `台美全市場（${mm.count ?? "—"} 檔；台股 ${esc(meta.台股?.date || "—")}、美股 ${esc(meta.美股?.date || "—")}）：綜合分數 = <a href="${ZS.美國}" target="_blank" rel="noopener">籌碼結構掃描</a>強勢分數 × 0.7 + 新聞分數百分位 × 0.3；台股供應鏈位置來自 <a href="${esc(mm.chain_link || "#")}" target="_blank" rel="noopener">semi_value_chain</a>。` +
+    `新聞分數：主題規則判定受惠 +1 / 受壓 −1、標題直接點名 ±1、供應鏈傳導 ±0.5（24 小時內 ×1.5）。`;
+  drawScreenerTable();
 }
-function drawMarket() {
-  let rows = M.rows.filter((r) => mk.region === "all" || r.region === mk.region);
-  const p = MK_PRESETS.find((x) => x[0] === mk.preset);
-  rows = rows.filter(p[2]);
-  if (mk.mkt !== "all") rows = rows.filter((r) => r.mkt === mk.mkt);
-  if (mk.sector !== "all") rows = rows.filter((r) => r.sector === mk.sector);
-  if (mk.chain !== "all" || mk.pos !== "all") rows = rows.filter((r) => (r.chain || []).some((c) => (mk.chain === "all" || c.theme === mk.chain) && (mk.pos === "all" || c.pos === mk.pos)));
-  if (mk.q) { const q = mk.q.toLowerCase(); rows = rows.filter((r) => r.code.toLowerCase().includes(q) || (r.name || "").toLowerCase().includes(q)); }
-  const k = mk.sort, sgn = mk.desc ? -1 : 1;
-  rows.sort((a, b) => {
+
+function filteredRows() {
+  let rows = allRows();
+  const p = PRESETS.find((x) => x[0] === state.preset);
+  if (p && p[2]) rows = rows.filter(p[2]);
+  if (state.market !== "all") rows = rows.filter((r) => r.market === state.market);
+  if (state.exch !== "all") rows = rows.filter((r) => r.exch === state.exch);
+  if (state.asset !== "all") rows = rows.filter((r) => r.asset === state.asset);
+  if (state.sector !== "all") rows = rows.filter((r) => r.sector === state.sector);
+  if (state.fTheme !== "all") rows = rows.filter((r) => (r.themes || []).includes(state.fTheme) || (D.newsSyms[state.fTheme] || new Set()).has(r.symbol));
+  if (state.chain !== "all" || state.pos !== "all") rows = rows.filter((r) => (r.chain || []).some((c) => (state.chain === "all" || c.theme === state.chain) && (state.pos === "all" || c.pos === state.pos)));
+  if (state.q) {
+    const q = state.q.toLowerCase();
+    const exact = rows.filter((r) => r.symbol.toLowerCase() === q);
+    rows = exact.length ? exact : rows.filter((r) => [r.symbol, r.name, r.sector].some((x) => String(x ?? "").toLowerCase().includes(q)));
+  }
+  const k = state.sort, sgn = state.desc ? -1 : 1;
+  rows = rows.slice().sort((a, b) => {
     const x = a[k], y = b[k];
     if (x == null && y == null) return 0;
     if (x == null) return 1;
     if (y == null) return -1;
     return (typeof x === "string" ? x.localeCompare(y, "zh-Hant") : x - y) * sgn;
   });
-  const pages = Math.max(1, Math.ceil(rows.length / MK_PAGE));
-  mk.page = Math.min(mk.page, pages - 1);
-  const view = rows.slice(mk.page * MK_PAGE, (mk.page + 1) * MK_PAGE);
-  const cols = [["code", "代號"], ["name", "名稱"], ["mkt", "交易所"], ["sector", "產業"], [null, "供應鏈位置"], ["close", "收盤", "r"], ["chg", "漲跌", "r"],
-    ["biasMA", "月線乖離", "r"], ["winPct", "獲利比例", "r"], ["z", "Z", "r"], ["score", "強勢分數", "r"], ["news", "新聞", "r"], [null, "連結"]];
-  let h = `<thead><tr>${cols.map(([key, n, c]) => key ? `<th class="sort ${c || ""}" data-mks="${key}">${n}${mk.sort === key ? `<span class="arr">${mk.desc ? "▼" : "▲"}</span>` : ""}</th>` : `<th>${n}</th>`).join("")}</tr></thead><tbody>`;
-  for (const r of view) {
-    const chain = (r.chain || []).slice(0, 4).map((c) => `<span class="pos pos-${esc(c.pos)}" title="${esc(c.group)}">${esc(c.theme)}·${esc(c.pos)}</span>`).join("") + ((r.chain || []).length > 4 ? `<span class="small">+${r.chain.length - 4}</span>` : "");
-    const links = `<a class="lnk" href="${ZS[r.region]}" target="_blank" rel="noopener">籌碼</a>` + (r.region === "台股" ? `<a class="lnk" href="${esc(M.chain_link)}" target="_blank" rel="noopener" title="到供應鏈頁面搜尋 ${esc(r.code)}">供應鏈</a>` : "");
-    h += `<tr><td class="num"><b>${esc(r.code)}</b></td><td>${esc(r.name)}</td><td class="small">${esc(r.mkt)}</td><td class="small">${esc(r.sector || "")}</td>
-      <td>${chain}</td><td class="r num">${fmtPrice(r.close)}</td><td class="r num">${fmtPct(r.chg, 2)}</td><td class="r num">${fmtPct(r.biasMA)}</td>
-      <td class="r num">${r.winPct == null ? "—" : r.winPct.toFixed(0) + "%"}</td><td class="r num">${r.z == null ? "—" : r.z.toFixed(2)}</td>
-      <td class="r num"><b>${r.score == null ? "—" : r.score.toFixed(0)}</b></td><td class="r num">${r.news ? `<b class="up">${r.news}</b>` : '<span class="small">—</span>'}</td><td>${links}</td></tr>`;
-  }
-  $("#mkTbl").innerHTML = h + "</tbody>";
-  $("#mkPager").innerHTML = `<span class="small">共 ${rows.length} 檔，第 ${mk.page + 1} / ${pages} 頁</span>
-    <button data-mkpg="0" ${mk.page === 0 ? "disabled" : ""}>« 第一頁</button><button data-mkpg="${mk.page - 1}" ${mk.page === 0 ? "disabled" : ""}>‹ 上一頁</button>
-    <button data-mkpg="${mk.page + 1}" ${mk.page >= pages - 1 ? "disabled" : ""}>下一頁 ›</button><button data-mkpg="${pages - 1}" ${mk.page >= pages - 1 ? "disabled" : ""}>最末頁 »</button>`;
+  if (state.preset === "score") rows = rows.filter((r) => r.score != null).sort((a, b) => b.score - a.score).slice(0, 50);
+  return rows;
 }
-document.addEventListener("click", (e) => {
-  const t = e.target.closest("[data-mkr],[data-mkp],[data-mks],[data-mkpg]");
-  if (!t || !M) return;
-  const d = t.dataset;
-  if (d.mkr) { Object.assign(mk, { region: d.mkr, mkt: "all", sector: "all", chain: "all", pos: "all", page: 0 }); return renderMarket(); }
-  if (d.mkp) { mk.preset = d.mkp; mk.page = 0; return renderMarket(); }
-  if (d.mkpg) { mk.page = +d.mkpg; drawMarket(); return $("#market").scrollIntoView(); }
-  if (d.mks) { if (mk.sort === d.mks) mk.desc = !mk.desc; else { mk.sort = d.mks; mk.desc = !["code", "name", "mkt", "sector"].includes(d.mks); } mk.page = 0; return drawMarket(); }
-});
-[["#mkMkt", "mkt"], ["#mkSector", "sector"], ["#mkChain", "chain"], ["#mkPos", "pos"]].forEach(([sel, key]) =>
-  $(sel).addEventListener("change", (e) => { mk[key] = e.target.value; mk.page = 0; drawMarket(); }));
-$("#mkQ").addEventListener("input", (e) => { mk.q = e.target.value.trim(); mk.page = 0; drawMarket(); });
-$("#mkReset").addEventListener("click", () => { Object.assign(mk, { region: "all", preset: "all", mkt: "all", sector: "all", chain: "all", pos: "all", q: "", page: 0 }); renderMarket(); });
+
+function drawScreenerTable() {
+  const rows = filteredRows();
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE));
+  state.page = Math.min(state.page, pages - 1);
+  const view = rows.slice(state.page * PAGE, (state.page + 1) * PAGE);
+  $("#scrMeta").textContent = `篩選結果 ${rows.length} / ${allRows().length} 檔${M ? "" : "（全市場載入中…）"}`;
+  let h = `<thead><tr>${COLS.map(([key, n, cls]) => `<th class="sort ${cls || ""}" data-sort="${key}">${n}${state.sort === key ? `<span class="arr">${state.desc ? "▼" : "▲"}</span>` : ""}</th>`).join("")}</tr></thead><tbody>`;
+  const numCell = (v, f) => (v == null ? '<span class="small">—</span>' : f(v));
+  for (const r of view) {
+    const bias = numCell(r.bias240, (v) => `<span class="${v > 35 ? "lv2" : v > 25 ? "lv1" : ""}" style="font-weight:${v > 25 ? 800 : 400}">${v > 0 ? "+" : ""}${v.toFixed(1)}%</span>`);
+    const rsi = numCell(r.rsi14, (v) => `<span style="font-weight:${v > 70 || v < 30 ? 800 : 400}" class="${v > 70 ? "lv1" : v < 30 ? "lv0" : ""}">${v.toFixed(0)}</span>`);
+    const news = r.news ? `<span class="${r.news > 0 ? "up" : "down"}" style="font-weight:700">${r.news > 0 ? "+" : ""}${r.news}</span>${r.mentions ? `<span class="small" title="標題直接點名次數"> ·${r.mentions}</span>` : ""}` : '<span class="small">0</span>';
+    const chain = (r.chain || []).slice(0, 3).map((c) => `<span class="pos pos-${esc(c.pos)}" title="${esc(c.group)}">${esc(c.theme)}·${esc(c.pos)}</span>`).join("") + ((r.chain || []).length > 3 ? `<span class="small">+${r.chain.length - 3}</span>` : "");
+    const links = r.full ? `<a class="lnk" href="${ZS[r.market] || ZS.美國}" target="_blank" rel="noopener">籌碼</a>` + (r.chain && r.chain.length ? `<a class="lnk" href="${esc((D.market_meta || {}).chain_link || "#")}" target="_blank" rel="noopener">供應鏈</a>` : "") : "";
+    h += `<tr>
+      <td class="num"><b>${esc(r.symbol)}</b></td><td>${esc(r.name)}</td><td>${esc(r.market)}${r.exch ? `<div class="small">${esc(r.exch)}</div>` : ""}</td>
+      <td class="small">${esc(r.sector)}${chain ? `<div>${chain}</div>` : ""}</td>
+      <td class="r num">${fmtPrice(r.last)}</td><td class="r num">${fmtPct(r.chg1d, 2)}</td><td class="r num">${fmtPct(r.chg1m)}</td>
+      <td class="r num">${fmtPct(r.chg3m)}</td><td class="r num">${fmtPct(r.ytd)}</td>
+      <td class="r num">${bias}</td><td class="r num">${fmtPct(r.biasMA)}</td><td class="r num">${rsi}</td>
+      <td class="r num">${numCell(r.winPct, (v) => v.toFixed(0) + "%")}</td><td class="r num">${numCell(r.zscore, (v) => v.toFixed(0))}</td>
+      <td class="r num">${news}</td><td class="r num"><b>${r.score == null ? "—" : r.score.toFixed(0)}</b></td>
+      <td>${r.spark ? spark(r.spark, 90, 22) : ""}${links}</td></tr>`;
+  }
+  $("#scrTbl").innerHTML = h + "</tbody>";
+  $("#scrPager").innerHTML = pages > 1 ? `<span class="small">第 ${state.page + 1} / ${pages} 頁</span>
+    <button data-pg="0" ${state.page === 0 ? "disabled" : ""}>« 第一頁</button><button data-pg="${state.page - 1}" ${state.page === 0 ? "disabled" : ""}>‹ 上一頁</button>
+    <button data-pg="${state.page + 1}" ${state.page >= pages - 1 ? "disabled" : ""}>下一頁 ›</button><button data-pg="${pages - 1}" ${state.page >= pages - 1 ? "disabled" : ""}>最末頁 »</button>` : "";
+}
+
+function resetFilters(extra) {
+  Object.assign(state, { preset: "all", market: "all", exch: "all", asset: "all", sector: "all", fTheme: "all", chain: "all", pos: "all", q: "", page: 0 }, extra || {});
+}
+function gotoTicker(sym) {
+  resetFilters({ q: sym });
+  renderScreener();
+  $("#screener").scrollIntoView();
+}
 
 // ---------------------------------------------------------------- events
 document.addEventListener("click", (e) => {
-  const t = e.target.closest("[data-sym],[data-g],[data-lang],[data-dir],[data-theme],[data-preset],[data-sort],[data-ind]");
+  const t = e.target.closest("[data-sym],[data-g],[data-lang],[data-dir],[data-theme],[data-preset],[data-sort],[data-ind],[data-pg]");
   if (!t || !D) return;
   const ds = t.dataset;
   if (ds.sym) return gotoTicker(ds.sym);
+  if (ds.pg) { state.page = +ds.pg; drawScreenerTable(); return $("#screener").scrollIntoView(); }
   if (ds.g) { state.group = ds.g; return renderMonitor(); }
   if (ds.lang) { state.lang = ds.lang; return renderNews(); }
   if (ds.dir) { state.dir = ds.dir; return renderNews(); }
   if (ds.theme !== undefined) { state.theme = ds.theme || null; return renderNews(); }
-  if (ds.preset) { state.preset = ds.preset; return renderScreener(); }
+  if (ds.preset) { state.preset = ds.preset; state.page = 0; return renderScreener(); }
   if (ds.ind) { state.group = "all"; renderMonitor(); return $("#monitor").scrollIntoView(); }
   if (ds.sort) {
     if (state.sort === ds.sort) state.desc = !state.desc;
-    else { state.sort = ds.sort; state.desc = !["symbol", "name", "market", "sector"].includes(ds.sort); }
+    else { state.sort = ds.sort; state.desc = !SORT_TEXT.includes(ds.sort); }
+    state.page = 0;
     return drawScreenerTable();
   }
 });
-$("#fMarket").addEventListener("change", (e) => { state.market = e.target.value; drawScreenerTable(); });
-$("#fAsset").addEventListener("change", (e) => { state.asset = e.target.value; drawScreenerTable(); });
-$("#fTheme").addEventListener("change", (e) => { state.fTheme = e.target.value; drawScreenerTable(); });
-$("#fQ").addEventListener("input", (e) => { state.q = e.target.value.trim(); drawScreenerTable(); });
-$("#fReset").addEventListener("click", () => { Object.assign(state, { preset: "all", market: "all", asset: "all", fTheme: "all", q: "" }); renderScreener(); });
+[["#fMarket", "market"], ["#fExch", "exch"], ["#fAsset", "asset"], ["#fSector", "sector"], ["#fTheme", "fTheme"], ["#fChain", "chain"], ["#fPos", "pos"]].forEach(([sel, key]) =>
+  $(sel).addEventListener("change", (e) => { state[key] = e.target.value; state.page = 0; if (key === "market") { state.exch = "all"; state.sector = "all"; return renderScreener(); } drawScreenerTable(); }));
+$("#fQ").addEventListener("input", (e) => { state.q = e.target.value.trim(); state.page = 0; drawScreenerTable(); });
+$("#fReset").addEventListener("click", () => { resetFilters(); renderScreener(); });
 $("#newsQ").addEventListener("input", (e) => { state.newsQ = e.target.value.trim(); renderNews(); });
 $("#refreshBtn").addEventListener("click", doRefresh);
 

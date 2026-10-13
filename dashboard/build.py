@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from . import autofill, fetchers, indicators, market, news, scenarios, screener
+from . import autofill, fetchers, indicators, integrate, market, news, scenarios, screener
 from .themes import THEMES
 from .universe import META, OVERVIEW, UNIVERSE
 
@@ -94,7 +94,6 @@ def collect(demo: bool = False) -> dict:
     manual = load_manual()
     if not demo:
         manual = autofill.merge(manual, autofill.collect(yahoo, errors))
-    market.news_mentions(mk["rows"], news_items)
     nscore = news.ticker_news_scores(news_items)
 
     # 標的 → 相關主題
@@ -111,6 +110,17 @@ def collect(demo: bool = False) -> dict:
         row = {"symbol": sym, **m, "currency": h.get("currency", ""), **screener.metrics(h),
                "news": round(nscore.get(sym, 0), 1), "themes": sym_themes.get(sym, [])}
         rows.append(row)
+
+    # 台美全市場：轉成篩選格式、與跨資產池去重、連結新聞
+    mk_rows = integrate.merge_dups(rows, integrate.to_screen_rows(mk["rows"]))
+    stats = integrate.link_news(rows, mk_rows, news_items)
+    for r in rows + mk_rows:
+        st = stats.get(r["symbol"])
+        if st:
+            r["news"] = round((r.get("news") or 0) + st["news"], 1)
+            r["mentions"] = st["mentions"]
+    integrate.theme_market_leaders(theme_sum, news_items)
+    integrate.score_full(mk_rows)
     screener.score_all(rows)
     for r in rows:
         for k, v in list(r.items()):
@@ -141,12 +151,23 @@ def collect(demo: bool = False) -> dict:
         "themes": theme_sum,
         "theme_names": {t["id"]: t["name"] for t in THEMES},
         "news": news_items,
-        "market": mk,
-        "names": {s: m["name"] for s, m in META.items()},
+        "market": {**{k: v for k, v in mk.items() if k != "rows"}, "rows": mk_rows},
+        "names": _names(news_items, theme_sum, rows + mk_rows),
         "manual_asof": {k: v.get("asof") for k, v in manual.items() if isinstance(v, dict)},
         "errors": errors[:80],
         "error_count": len(errors),
     }
+
+
+def _names(items, themes, allrows) -> dict:
+    """新聞／主題中出現的全市場代號 → 名稱（前端標籤用）。"""
+    names = {s: m["name"] for s, m in META.items()}
+    by = {r["symbol"]: r.get("name", r["symbol"]) for r in allrows}
+    for x in items + themes:
+        for k in ("mk_benefit", "mk_hurt", "mk_related"):
+            for sym in x.get(k, []):
+                names.setdefault(sym, by.get(sym, sym))
+    return names
 
 
 def write_all(folder: Path, data: dict) -> None:

@@ -131,3 +131,29 @@ class MarketAutofillTests(unittest.TestCase):
         pts = [(f"2025-0{i}-30", 10.0) for i in range(1, 5)] + [(f"2026-0{i}-30", 12.0) for i in range(1, 5)]
         self.assertAlmostEqual(a._ttm_yoy(pts)[0], 20.0)
         self.assertAlmostEqual(a._ttm_yoy(pts[-5:])[0], 20.0)  # 只有 5 季：最新一季對去年同季
+
+
+class IntegrateTests(unittest.TestCase):
+    def test_merge_and_news_link(self):
+        from dashboard import integrate as ig
+        cross = [{"symbol": "2330.TW", "name": "台積電", "market": "台灣", "asset": "股票", "sector": "半導體", "news": 0}]
+        mk = ig.to_screen_rows([
+            {"code": "2330", "name": "台積電", "mkt": "上市", "region": "台股", "score": 60, "chain": [{"theme": "CoWoS", "group": "g", "pos": "上游"}]},
+            {"code": "3131", "name": "弘塑", "mkt": "上櫃", "region": "台股", "score": 70, "chain": [{"theme": "CoWoS", "group": "g", "pos": "下游"}]},
+            {"code": "MU", "name": "Micron Technology, Inc. Common Stock", "mkt": "NASDAQ", "region": "美股", "score": 80, "mcap": 1e11},
+        ])
+        rest = ig.merge_dups(cross, mk)
+        self.assertEqual([r["symbol"] for r in rest], ["3131.TWO", "MU"])
+        self.assertEqual(cross[0]["chain"][0]["theme"], "CoWoS")
+        items = [
+            {"title": "Micron shares surge on HBM demand", "lang": "en", "time": "", "tags": [{"theme": "memory", "dir": 1}]},
+            {"title": "弘塑接單強勁 營收創新高", "lang": "zh", "time": "", "tags": [{"theme": "ai_semis", "dir": 1}]},
+        ]
+        stats = ig.link_news(cross, rest, items)
+        self.assertIn("MU", items[0]["mk_benefit"])
+        self.assertIn("3131.TWO", items[1]["mk_benefit"])
+        self.assertIn("2330.TW", items[1]["mk_benefit"])  # 供應鏈傳導
+        self.assertEqual(stats["3131.TWO"]["mentions"], 1)
+        self.assertGreater(stats["3131.TWO"]["news"], stats["2330.TW"]["news"])
+        ig.score_full(rest)
+        self.assertIsNotNone(rest[0]["score"])

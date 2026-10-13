@@ -74,6 +74,8 @@ def collect(errors: list[str]) -> dict:
             x = info.get(r["code"])
             if x:
                 r["sector"] = x.get("ind") or r.get("sector")
+                if x.get("mc"):
+                    r["mc"] = x["mc"] * 1e6 / 31  # 百萬台幣 → 約當美元，供排序
                 if x.get("pe") is not None:
                     r["pe"] = x["pe"]
                 chain_n += 1
@@ -84,19 +86,3 @@ def collect(errors: list[str]) -> dict:
 
     return {"rows": rows, "meta": meta, "chain_link": CHAIN_BASE, "chain_matched": chain_n,
             "sources": {"美股": ZSIGMA_US, "台股": ZSIGMA_TW}}
-
-
-def news_mentions(rows: list[dict], news_items: list[dict]) -> None:
-    """台股：中文新聞標題直接提到公司名稱（≥2 字）即計一次。"""
-    zh = [n["title"] for n in news_items if n.get("lang") == "zh"]
-    if not zh:
-        return
-    for r in rows:
-        if r["region"] != "台股":
-            continue
-        name = r.get("name", "")
-        if len(name) < 2:
-            continue
-        c = sum(1 for t in zh if name in t)
-        if c:
-            r["news"] = c

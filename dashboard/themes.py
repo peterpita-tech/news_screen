@@ -178,4 +178,18 @@ THEMES = [
         "up_hurt": [],
         "indicators": [],
     },
+    {
+        "id": "apple", "name": "蘋果供應鏈",
+        "kw": ["apple", "iphone", "ipad", "macbook", "蘋果", "iphone"],
+        "up_benefit": ["AAPL", "2317.TW", "TSM", "2330.TW"],
+        "up_hurt": [],
+        "indicators": [],
+    },
+    {
+        "id": "satellite", "name": "低軌衛星 / 通訊",
+        "kw": ["starlink", "satellite", "spacex", "5g", "低軌衛星", "衛星", "星鏈"],
+        "up_benefit": [],
+        "up_hurt": [],
+        "indicators": [],
+    },
 ]
