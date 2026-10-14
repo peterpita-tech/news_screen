@@ -1,6 +1,7 @@
 """新聞抓取、去重、主題標註與受惠 / 受壓標的推導。"""
 from __future__ import annotations
 
+import hashlib
 import re
 import urllib.parse
 from collections import defaultdict
@@ -12,7 +13,7 @@ from .themes import DOWN_WORDS, THEMES, UP_WORDS
 
 
 def _gnews(q: str, lang: str) -> str:
-    qq = urllib.parse.quote(q + " when:2d")
+    qq = urllib.parse.quote(q + " when:7d")
     if lang == "zh":
         return f"https://news.google.com/rss/search?q={qq}&hl=zh-TW&gl=TW&ceid=TW:zh-Hant"
     return f"https://news.google.com/rss/search?q={qq}&hl=en-US&gl=US&ceid=US:en"
@@ -50,6 +51,35 @@ def _has(text: str, word: str) -> bool:
     return word in text
 
 
+THEME_CAT = {
+    "fed_rates": ["總經"], "inflation": ["總經"], "recession": ["總經"], "dollar": ["總經"], "credit": ["總經"],
+    "japan": ["總經"], "gold": ["總經"], "china": ["政策", "總經"], "tariff": ["政策"], "oil_mideast": ["能源", "地緣"],
+    "shipping": ["能源"], "ai_power": ["科技", "能源"], "ai_semis": ["科技"], "memory": ["科技"], "ai_credit": ["科技"],
+    "apple": ["科技"], "satellite": ["科技"], "ev_auto": ["科技"], "crypto": ["科技"], "taiwan_geo": ["地緣"],
+    "defense": ["地緣"], "pharma": ["公司"],
+}
+CATEGORIES = ["總經", "公司", "政策", "能源", "科技", "地緣"]
+REGIONS = [
+    ("台灣", ["台灣", "台股", "taiwan", "taiex", "新台幣", "台積電", "tsmc", "國發會", "央行總裁楊金龍"]),
+    ("美國", ["美國", "美股", "fed", "聯準會", "u.s.", "us", "wall street", "s&p", "nasdaq", "treasury", "華爾街", "白宮", "trump", "川普"]),
+    ("中國", ["中國", "陸股", "china", "beijing", "北京", "人行", "pboc", "港股", "hong kong"]),
+    ("日本", ["日本", "日股", "japan", "boj", "日銀", "nikkei", "日圓", "yen"]),
+    ("歐洲", ["歐洲", "歐股", "europe", "ecb", "歐央", "eurozone", "germany", "德國", "uk", "英國", "france", "法國"]),
+    ("韓國", ["韓國", "韓股", "korea", "kospi", "三星", "samsung", "海力士", "hynix"]),
+    ("中東", ["中東", "伊朗", "以色列", "iran", "israel", "saudi", "沙烏地", "opec", "紅海", "gaza"]),
+]
+
+
+def _region(title: str, lang: str) -> str:
+    t = " " + title.lower() + " "
+    best, hits = None, 0
+    for name, kws in REGIONS:
+        n = sum(1 for k in kws if (re.search(r"(?<![a-z])" + re.escape(k.strip()) + r"(?![a-z])", t) if k[0].isascii() else k in t))
+        if n > hits:
+            best, hits = name, n
+    return best or ("台灣" if lang == "zh" and ("台" in title) else "全球")
+
+
 def tag_item(item: dict) -> dict:
     text = " " + item["title"].lower() + " "
     ups = sum(1 for w in UP_WORDS if _has(text, w))
@@ -83,10 +113,18 @@ def tag_item(item: dict) -> dict:
     item["hurt"] = sorted(hurt)[:12]
     item["related"] = sorted((related | both) - benefit - hurt)[:12]
     item["indicators"] = sorted({i for tg in tags for i in th_by_id[tg["theme"]]["indicators"]})
+    cats = []
+    for tg in tags:
+        for c in THEME_CAT.get(tg["theme"], []):
+            if c not in cats:
+                cats.append(c)
+    item["cats"] = cats
+    item["region"] = _region(item["title"], item.get("lang", ""))
+    item["id"] = hashlib.md5((item["title"] + item.get("source", "")).encode("utf-8")).hexdigest()[:10]
     return item
 
 
-def collect(max_age_hours: int = 72, limit: int = 400) -> tuple[list[dict], list[dict], list[str]]:
+def collect(max_age_hours: int = 168, limit: int = 600) -> tuple[list[dict], list[dict], list[str]]:
     """回傳 (news_items, theme_summary, errors)。"""
     errors, raw = [], []
     with ThreadPoolExecutor(max_workers=8) as ex:

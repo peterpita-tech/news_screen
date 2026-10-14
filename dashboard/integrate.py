@@ -130,7 +130,7 @@ def link_news(cross: list[dict], mk: list[dict], items: list[dict], now=None) ->
         title = it["title"]
         b, h, rel = [], [], []
         # 1. 直接提及
-        mentioned = set()
+        mentioned, seen = set(), set()
         if it.get("lang") == "zh":
             for name, sym in tw_names:
                 if name in title and not any(name in m for m in mentioned):
@@ -140,7 +140,6 @@ def link_news(cross: list[dict], mk: list[dict], items: list[dict], now=None) ->
                     (b if d > 0 else h if d < 0 else rel).append(sym)
                     stats[sym]["news"] += d * w
         else:
-            seen = set()
             for rx, sym in us_alias:
                 if sym not in seen and rx.search(title):
                     seen.add(sym)
@@ -172,6 +171,10 @@ def link_news(cross: list[dict], mk: list[dict], items: list[dict], now=None) ->
             top = [m["r"]["symbol"] for m in ranked[:8]]
             (b if d > 0 else h if d < 0 else rel).extend(top)
         dedup = lambda xs: list(dict.fromkeys(xs))[:12]  # noqa: E731
+        if mentioned or (it.get("lang") != "zh" and seen):
+            it.setdefault("cats", [])
+            if "公司" not in it["cats"]:
+                it["cats"].append("公司")
         it["mk_benefit"], it["mk_hurt"] = dedup(b), dedup(h)
         it["mk_related"] = [s for s in dedup(rel) if s not in it["mk_benefit"] and s not in it["mk_hurt"]]
     return stats
