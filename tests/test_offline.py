@@ -96,6 +96,7 @@ class MarketAutofillTests(unittest.TestCase):
         self.assertEqual(a._fut_oi("外資台指期淨空單增至32,150口"), -32150)
         self.assertEqual(a._export("9月外銷訂單年減3.2%"), -3.2)
         self.assertEqual(a._pct_in(100, 220)("大盤融資維持率降至158.3%"), 158.3)
+        self.assertIsNone(a._pct_in(100, 220)("融資維持率逼近130%警戒線，台股賣壓能否降溫"))
         self.assertIsNone(a._ndc("景氣燈號 100分"))
         self.assertFalse(a._month_ok("4月外銷訂單年增48%", "2026-09-24"))
         self.assertTrue(a._month_ok("8月外銷訂單年增20%", "2026-09-24"))

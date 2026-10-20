@@ -41,6 +41,10 @@ def _pct_in(lo, hi):
     def f(t):
         for m in re.finditer(r"(\d{2,3}(?:\.\d+)?)\s*%", t):
             v = _num(m.group(1))
+            after = t[m.end():m.end() + 4]
+            # 「逼近130%警戒線」「跌破130%關卡」是門檻描述，不是實際數值
+            if re.match(r"\s*(警戒|防線|關卡|大關|斷頭|生死|保衛)", after):
+                continue
             if lo <= v <= hi:
                 return v
         return None
