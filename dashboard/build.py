@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from . import autofill, fetchers, indicators, integrate, market, news, scenarios, screener
+from . import article, autofill, fetchers, indicators, integrate, market, news, scenarios, screener
 from .themes import THEMES
 from .universe import META, OVERVIEW, UNIVERSE
 
@@ -91,6 +92,11 @@ def collect(demo: bool = False) -> dict:
         fred["DGS10"] = list(zip(h["dates"], h["close"]))
         errors.append("FRED DGS10 改用 Yahoo ^TNX 備援")
 
+    # 新聞內文節錄（沿用上一版已發布的節錄，只抓新新聞）
+    art_stats = {}
+    if not demo:
+        art_stats = article.enrich(news_items, errors, os.environ.get("PREV_DATA_URL"))
+
     manual = load_manual()
     if not demo:
         manual = autofill.merge(manual, autofill.collect(yahoo, errors))
@@ -151,6 +157,7 @@ def collect(demo: bool = False) -> dict:
         "themes": theme_sum,
         "theme_names": {t["id"]: t["name"] for t in THEMES},
         "news": news_items,
+        "article_stats": art_stats,
         "market": {**{k: v for k, v in mk.items() if k != "rows"}, "rows": mk_rows},
         "names": _names(news_items, theme_sum, rows + mk_rows),
         "manual_asof": {k: v.get("asof") for k, v in manual.items() if isinstance(v, dict)},

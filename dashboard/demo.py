@@ -87,8 +87,11 @@ HEADLINES = [
 
 def news_items():
     now = datetime.now(timezone.utc)
+    body = ["（示範內文）這是一段模擬的新聞內文節錄，用來預覽點選標題後直接顯示內文的版面。實際部署時會抓取原始報導的前幾段文字。",
+            "第二段示範內文：系統只保留前 4 段、約 700 字的節錄，並附上來源與原文連結，完整內容請點「閱讀原文」。"]
     return [{"title": t, "link": "https://example.com/demo", "source": "示範資料", "lang": lang,
-             "time": (now - timedelta(minutes=37 * i)).strftime("%Y-%m-%dT%H:%M:%SZ")}
+             "time": (now - timedelta(minutes=37 * i)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+             "summary": "", "body": body if i % 3 != 2 else []}
             for i, (t, lang) in enumerate(HEADLINES)]
 
 

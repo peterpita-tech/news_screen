@@ -24,6 +24,8 @@ def main():
     (out / ".nojekyll").write_text("")
     c = data["counts"]
     print(f"完成：{out}  標的 {c['tickers']}/{c['universe']}、新聞 {c['news']}、FRED {c['fred']}/{c['fred_total']}、錯誤 {data['error_count']}")
+    a = data.get("article_stats") or {}
+    print(f"新聞內文節錄：沿用 {a.get('reused', 0)}、新抓 {a.get('fetched', 0)}、失敗 {a.get('failed', 0)}")
     mk = data.get("market") or {"rows": []}
     print(f"台美全市場 {len(mk['rows'])} 檔、供應鏈對應 {mk.get('chain_matched', 0)} 檔、來源日期 {mk.get('meta')}")
     for r in data["indicators"]:

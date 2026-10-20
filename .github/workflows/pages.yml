@@ -30,6 +30,7 @@ jobs:
         run: python build_static.py --out site
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          PREV_DATA_URL: https://peterpita-tech.github.io/news_screen/data.json
       - uses: actions/configure-pages@v5
         with:
           enablement: true

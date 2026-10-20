@@ -218,7 +218,7 @@ function newsFiltered(ignoreCat) {
   if (state.saved) items = items.filter((n) => SAVED.has(n.id));
   if (state.newsQ) {
     const q = state.newsQ.toLowerCase();
-    items = items.filter((n) => n.title.toLowerCase().includes(q) || newsSyms(n).some((x) => x.toLowerCase() === q || nameOf(x).toLowerCase().includes(q)));
+    items = items.filter((n) => n.title.toLowerCase().includes(q) || (n.body || []).join(" ").toLowerCase().includes(q) || newsSyms(n).some((x) => x.toLowerCase() === q || nameOf(x).toLowerCase().includes(q)));
   }
   return items;
 }
@@ -239,7 +239,7 @@ function renderNews() {
     const lead = [...(n.mk_benefit || []), ...n.benefit].slice(0, 2).map(nameOf).join("、");
     return `<div class="ev ${n.id === state.ev ? "sel" : ""}" data-ev="${n.id}">
       <div class="ev-top"><div class="ev-title">${esc(n.title)}</div><div class="ev-time">${agoShort(n.time)}<span class="dot ${fresh ? "fresh" : ""}"></span></div></div>
-      <div class="ev-meta">${esc((n.cats && n.cats[0]) || "其他")} · ${esc(n.region || "全球")}${SAVED.has(n.id) ? " · 已收藏" : ""}</div>
+      <div class="ev-meta">${esc((n.cats && n.cats[0]) || "其他")} · ${esc(n.region || "全球")}${n.body && n.body.length ? " · 含內文" : ""}${SAVED.has(n.id) ? " · 已收藏" : ""}</div>
       <div class="ev-sub">${t0 ? `${esc(t0.name)} <span class="${t0.dir > 0 ? "up" : t0.dir < 0 ? "down" : ""}">${t0.dir > 0 ? "▲" : t0.dir < 0 ? "▼" : "·"}</span>` : esc(n.source)}${lead ? ` · ${esc(lead)}` : ""}</div>
     </div>`;
   }).join("") + (items.length > state.evLimit ? `<button class="ev-more" data-more="1">顯示更多（${items.length - state.evLimit}）</button>` : "")
@@ -279,15 +279,19 @@ function renderDetail() {
       <div class="dt-actions">
         <button class="icon-btn ${SAVED.has(n.id) ? "on" : ""}" data-save="${n.id}" title="收藏"><svg viewBox="0 0 24 24" width="17" height="17"><path d="M6 3h12v18l-6-4-6 4z" fill="${SAVED.has(n.id) ? "currentColor" : "none"}" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
         <button class="icon-btn" data-share="${n.id}" title="複製連結"><svg viewBox="0 0 24 24" width="17" height="17"><circle cx="18" cy="5" r="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="6" cy="12" r="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="19" r="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4" stroke="currentColor" stroke-width="1.8"/></svg></button>
-        <a class="icon-btn" href="${esc(n.link)}" target="_blank" rel="noopener noreferrer" title="閱讀原文"><svg viewBox="0 0 24 24" width="17" height="17"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <a class="icon-btn" href="${esc(n.url || n.link)}" target="_blank" rel="noopener noreferrer" title="閱讀原文"><svg viewBox="0 0 24 24" width="17" height="17"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
       </div>
     </div>
     <hr class="dt-hr">
+    ${n.body && n.body.length ? `<div class="dt-body">${n.body.map((p) => `<p>${esc(p)}</p>`).join("")}
+      <div class="dt-src">節錄自 ${esc(n.source)}，完整內容請見 <a href="${esc(n.url || n.link)}" target="_blank" rel="noopener noreferrer">原文 ↗</a></div></div>`
+    : n.summary ? `<div class="dt-body"><p>${esc(n.summary)}</p><div class="dt-src">摘要來自 ${esc(n.source)} RSS，完整內容請見 <a href="${esc(n.url || n.link)}" target="_blank" rel="noopener noreferrer">原文 ↗</a></div></div>`
+    : `<div class="dt-body empty">此來源未提供可節錄的內文（可能為付費牆或阻擋擷取）。<a href="${esc(n.url || n.link)}" target="_blank" rel="noopener noreferrer">前往原文閱讀 ↗</a></div>`}
     <div class="impact">
       <h3>影響判讀</h3>
       <p>${esc(summary)}</p>
       ${n.tags.length ? `<div class="drv">${n.tags.map((t) => `<span class="drv-tag" data-theme="${t.theme}">${esc(t.name)} <span class="${t.dir > 0 ? "up" : t.dir < 0 ? "down" : "small"}">${t.dir > 0 ? "▲ 上升" : t.dir < 0 ? "▼ 下降" : "· 方向不明"}</span></span>`).join("")}</div>` : ""}
-      <a class="cta" href="${esc(n.link)}" target="_blank" rel="noopener noreferrer">閱讀原文 ↗</a>
+      <a class="cta" href="${esc(n.url || n.link)}" target="_blank" rel="noopener noreferrer">閱讀原文 ↗</a>
     </div>
     ${rows.length ? `<div class="dt-sec"><h4>相關標的</h4><table class="mini-tbl"><thead><tr><th></th><th>標的</th><th>市場</th><th>影響</th><th class="r">最新價</th><th class="r">1日</th><th class="r">新聞分數</th><th class="r">綜合分數</th></tr></thead><tbody>
       ${rows.map(({ s, role }) => { const r = rowOf(s) || {}; return `<tr><td>${starBtn(s)}</td><td><b data-sym="${esc(s)}" style="cursor:pointer">${esc(nameOf(s))}</b> <span class="small">${esc(s)}</span></td><td class="small">${esc(r.market || "")}</td>

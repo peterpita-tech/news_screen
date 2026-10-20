@@ -157,3 +157,27 @@ class IntegrateTests(unittest.TestCase):
         self.assertGreater(stats["3131.TWO"]["news"], stats["2330.TW"]["news"])
         ig.score_full(rest)
         self.assertIsNotNone(rest[0]["score"])
+
+
+class ArticleTests(unittest.TestCase):
+    def test_extract_ld_json(self):
+        from dashboard import article
+        page = '<script type="application/ld+json">{"@type":"NewsArticle","articleBody":"台積電今日公布第三季財報，營收創新高，毛利率與營業利益率皆優於市場預期，法人看好後市。\\n公司表示人工智慧相關需求依舊強勁，將上修全年資本支出並加速先進封裝產能擴充。\\n訂閱電子報"}</script>'
+        out = article.extract(page)
+        self.assertEqual(len(out), 2)
+        self.assertTrue(out[0].startswith("台積電"))
+
+    def test_extract_paragraphs_and_limit(self):
+        from dashboard import article
+        long = "A" * 300
+        page = "<article>" + "".join(f"<p>Paragraph {i} text that is clearly long enough to count as content. {long}</p>" for i in range(8)) + "<p>Subscribe to our newsletter for more</p></article>"
+        out = article.extract(page)
+        self.assertLessEqual(sum(len(p) for p in out), article.MAX_CHARS + 5)
+        self.assertTrue(all("newsletter" not in p for p in out))
+
+    def test_rss_summary(self):
+        rss = (b'<?xml version="1.0"?><rss><channel><item><title>Fed holds rates</title><link>https://x</link>'
+               b'<description>&lt;p&gt;The Federal Reserve kept rates unchanged on Wednesday, citing sticky inflation.&lt;/p&gt;</description></item></channel></rss>')
+        with mock.patch.object(fetchers, "http_get", return_value=rss):
+            items = fetchers.rss_items("u", "CNBC", "en")
+        self.assertIn("Federal Reserve kept rates", items[0]["summary"])

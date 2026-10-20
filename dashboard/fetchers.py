@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import csv
+import html
 import io
 import json
 import os
+import re
 import ssl
 import time
 import urllib.parse
@@ -147,6 +149,22 @@ def _parse_time(s: str) -> str:
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def http_post(url: str, data: bytes, timeout: int = 15, headers: dict | None = None) -> bytes:
+    h = {"User-Agent": UA, "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"}
+    if headers:
+        h.update(headers)
+    req = urllib.request.Request(url, data=data, headers=h, method="POST")
+    with urllib.request.urlopen(req, timeout=timeout, context=_CTX) as r:
+        return r.read()
+
+
+def clean_html(s: str) -> str:
+    s = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", s or "", flags=re.S | re.I)
+    s = re.sub(r"<br\s*/?>", "\n", s, flags=re.I)
+    s = re.sub(r"<[^>]+>", " ", s)
+    return re.sub(r"[ \t\u3000\xa0]+", " ", html.unescape(s)).strip()
+
+
 def rss_items(url: str, source_label: str, lang: str) -> list[dict]:
     root = ET.fromstring(http_get(url))
     items = []
@@ -157,12 +175,17 @@ def rss_items(url: str, source_label: str, lang: str) -> list[dict]:
         # Google News 標題結尾帶「 - 媒體名」
         if source != source_label and title.endswith(" - " + source):
             title = title[: -len(" - " + source)]
+        desc = clean_html(_text(it, "description"))
+        # Google News 的 description 只是標題＋媒體名，不算摘要
+        if not desc or desc.startswith(title[:20]) or len(desc) < 30:
+            desc = ""
         items.append({
             "title": title,
             "link": _text(it, "link"),
             "time": _parse_time(_text(it, "pubDate")),
             "source": source,
             "lang": lang,
+            "summary": desc[:400],
         })
     ns = "{http://www.w3.org/2005/Atom}"
     for it in root.iter(ns + "entry"):
@@ -189,6 +212,7 @@ def cnyes_items(limit: int = 60) -> list[dict]:
             "link": f"https://news.cnyes.com/news/id/{n.get('newsId')}",
             "time": datetime.fromtimestamp(t, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ") if t else "",
             "source": "鉅亨網",
+            "summary": clean_html(n.get("summary") or "")[:400],
             "lang": "zh",
         })
     return [i for i in out if i["title"]]

@@ -276,3 +276,9 @@ th.hl { background: var(--green) !important; color: #fff; }
   .dt-head { flex-direction: column; gap: 6px; }
   .mini-tbl { display: block; overflow-x: auto; }
 }
+
+.dt-body { font-size: 15.5px; line-height: 1.85; color: var(--ink); max-width: 760px; }
+.dt-body p { margin: 0 0 14px; }
+.dt-body.empty { font-size: 13.5px; color: var(--ink-3); background: var(--soft); border: 1px dashed var(--line); border-radius: 8px; padding: 14px 16px; }
+.dt-body.empty a, .dt-src a { color: var(--green); font-weight: 600; }
+.dt-src { font-size: 12px; color: var(--ink-3); margin: 4px 0 22px; padding-top: 10px; border-top: 1px solid var(--line-2); }
