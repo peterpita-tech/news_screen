@@ -110,12 +110,16 @@ class MarketAutofillTests(unittest.TestCase):
             "ISM manufacturing PMI": [{"title": "ISM non-manufacturing PMI 54.9", "time": "2026-10-05T00:00:00Z", "source": "x", "link": ""},
                                       {"title": "ISM manufacturing PMI rises to 49.1", "time": "2026-10-01T00:00:00Z", "source": "x", "link": ""}],
         }
+        fake["S&P 500 forward P/E ratio"] = [
+            {"title": "Consumer Staples Forward P/E at 23.8x, overtaking the S&P 500", "time": "2026-10-21T00:00:00Z", "source": "x", "link": ""},
+            {"title": "S&P 500 forward 12-month P/E ratio is 22.4", "time": "2026-10-18T00:00:00Z", "source": "x", "link": ""}]
         with mock.patch.object(a, "_search", side_effect=lambda q, lang, days: fake.get(q, [])):
             errs = []
             out = a.search_values(errs)
         self.assertEqual(errs, [])
         self.assertEqual(out["ndc_signal"]["value"], 41)
         self.assertEqual(out["ism_pmi"]["value"], 49.1)
+        self.assertEqual(out["spx_fwd_pe"]["value"], 22.4)
 
     def test_merge_prefers_newer(self):
         from dashboard import autofill as a
