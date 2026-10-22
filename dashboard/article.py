@@ -14,6 +14,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 from . import fetchers
 
+# 付費牆媒體：不抓內文，只顯示 RSS 導言與原文連結
+SKIP_DOMAINS = ("ft.com", "wsj.com", "bloomberg.com", "barrons.com", "economist.com", "nikkei.com")
 MAX_PARAS = 4
 MAX_CHARS = 700
 BOILER = re.compile(r"(cookie|subscribe|sign up|newsletter|all rights reserved|copyright|©|訂閱|版權所有|延伸閱讀|"
@@ -100,6 +102,8 @@ def fetch_one(item: dict) -> dict:
     url = item["link"]
     if "news.google.com" in url:
         url = decode_google(url)
+    if any(d in urllib.parse.urlparse(url).netloc for d in SKIP_DOMAINS):
+        return {"url": url, "body": []}
     page = _decode(fetchers.http_get(url, timeout=12, retries=0))
     return {"url": url, "body": extract(page)}
 

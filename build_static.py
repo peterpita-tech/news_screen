@@ -24,6 +24,11 @@ def main():
     (out / ".nojekyll").write_text("")
     c = data["counts"]
     print(f"完成：{out}  標的 {c['tickers']}/{c['universe']}、新聞 {c['news']}、FRED {c['fred']}/{c['fred_total']}、錯誤 {data['error_count']}")
+    from collections import Counter
+    top = Counter(n.get("source", "") for n in data.get("news", [])).most_common(12)
+    print("新聞來源：" + "、".join(f"{k} {v}" for k, v in top))
+    for name in ("動區動趨", "BigGo財經", "Financial Times"):
+        print(f"  {name}: {sum(1 for n in data.get('news', []) if name.lower() in n.get('source', '').lower())} 則")
     a = data.get("article_stats") or {}
     print(f"新聞內文節錄：沿用 {a.get('reused', 0)}、新抓 {a.get('fetched', 0)}、失敗 {a.get('failed', 0)}")
     mk = data.get("market") or {"rows": []}

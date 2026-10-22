@@ -27,6 +27,17 @@ SOURCES = [
     ("rss", "https://feeds.content.dowjones.io/public/rss/mw_topstories", "MarketWatch", "en"),
     ("cnyes", "", "鉅亨網", "zh"),
 ]
+# 加密 / 區塊鏈與台灣財經媒體：直接 RSS ＋ Google News site: 搜尋作為備援
+SOURCES += [
+    ("rss", "https://www.blocktempo.com/feed/", "動區動趨", "zh"),
+    ("rss", _gnews("site:blocktempo.com", "zh"), "動區動趨", "zh"),
+    ("rss", _gnews("site:finance.biggo.com.tw", "zh"), "BigGo財經", "zh"),
+    ("rss", _gnews("BigGo財經", "zh"), "BigGo財經", "zh"),
+    # Financial Times 公開 RSS（僅標題與導言，內文需訂閱，不抓取）
+    ("rss", "https://www.ft.com/rss/home/international", "Financial Times", "en"),
+    ("rss", "https://www.ft.com/markets?format=rss", "Financial Times", "en"),
+    ("rss", "https://www.ft.com/global-economy?format=rss", "Financial Times", "en"),
+]
 for q in ["stock market", "Federal Reserve rates", "oil prices", "semiconductor AI chips", "China economy",
           "Taiwan", "treasury yields", "gold price", "Bank of Japan", "tariffs", "credit spreads", "Nikkei Kospi"]:
     SOURCES.append(("rss", _gnews(q, "en"), "Google News", "en"))
