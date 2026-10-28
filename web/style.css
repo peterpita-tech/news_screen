@@ -348,3 +348,6 @@ tbody tr:nth-child(even) td { background: #f1f0eb; }
 .to-chart:hover { color: var(--green-2); }
 .lq-ctitle b { font-weight: 700; }
 .lq-ctitle em { font-style: normal; font-weight: 400; color: var(--ink-3); font-size: 11.5px; }
+.views { margin-left: 4px; gap: 0; }
+.views a { padding: 6px 9px 8px; font-size: 13.5px; }
+.hd-in { gap: 20px; }

@@ -20,6 +20,7 @@
       <a href="#news" data-view="news">市場事件</a>
       <a href="#liquidity" data-view="liquidity">流動性圖表</a>
       <a href="#monitor" data-view="monitor">指標監控</a>
+      <a href="#indcharts" data-view="indcharts">指標圖表</a>
       <a href="#scenario" data-view="scenario">情境判讀</a>
       <a href="#screener" data-view="screener">全市場篩選</a>
       <a href="#overview" data-view="overview">市場概況</a>
@@ -65,7 +66,12 @@
   <div class="page-hd"><h2>指標監控</h2><p>分級觸發條件與量化建議動作。● 正常　● 一級警戒　● 二級危機；「自動」為定期搜尋取得，「手動」請於 config/manual_indicators.json 更新。</p></div>
   <div class="cats" id="grpFilter"></div>
   <div class="tbl-wrap"><table id="indTbl"></table></div>
-  <h3 class="sub-hd">指標歷史走勢與觸發門檻</h3>
+  <p class="note">點指標名稱旁的 📈 可跳到「指標圖表」頁查看歷史走勢與觸發門檻。</p>
+</section>
+
+<!-- ============================ 指標圖表 ============================ -->
+<section class="view page" id="view-indcharts" hidden>
+  <div class="page-hd"><h2>指標圖表</h2><p>各監控指標的歷史走勢，虛線為觸發門檻：綠＝正常 / 參考、橘＝一級警戒、紅＝二級危機。</p></div>
   <div id="monCharts"></div>
 </section>
 

@@ -26,7 +26,7 @@ function valueAt(data, t) { // 該日或之前最近一筆
 }
 
 // 圖表組：資料鍵 → 容器
-const SETS = { liquidity: ["panels", "#lqPanels"], monitor: ["monitor", "#monCharts"], overview: ["overview", "#ovCharts"] };
+const SETS = { liquidity: ["panels", "#lqPanels"], indcharts: ["monitor", "#monCharts"], overview: ["overview", "#ovCharts"] };
 LQ.byId = {};
 LQ.loading = null;
 

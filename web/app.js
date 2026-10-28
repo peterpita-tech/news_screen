@@ -327,13 +327,13 @@ function setView(v, push = true) {
   document.querySelectorAll("#views a").forEach((a) => a.classList.toggle("on", a.dataset.view === v));
   if (push) history.replaceState(null, "", "#" + v + (v === "news" && state.ev ? "/" + state.ev : ""));
   window.scrollTo(0, 0);
-  if (["liquidity", "monitor", "overview"].includes(v) && typeof loadCharts === "function") loadCharts(v);
+  if (["liquidity", "indcharts", "overview"].includes(v) && typeof loadCharts === "function") loadCharts(v);
 }
 function route() {
   const [v, id] = (location.hash.slice(1) || "news").split("/");
   if (id) state.ev = id;
   if (v === "news" && id) renderNews();
-  setView(["news", "liquidity", "monitor", "scenario", "screener", "overview"].includes(v) ? v : "news", false);
+  setView(["news", "liquidity", "monitor", "indcharts", "scenario", "screener", "overview"].includes(v) ? v : "news", false);
 }
 
 // ---------------------------------------------------------------- 跨資產＋台美全市場篩選
@@ -472,8 +472,15 @@ document.addEventListener("click", (e) => {
   const tc = e.target.closest("[data-tochart]");
   if (tc) {
     e.preventDefault();
-    const el = document.getElementById("lqc-" + tc.dataset.tochart);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" }); else toast("此指標無歷史序列（手動或季度資料）");
+    const key = tc.dataset.tochart;
+    setView("indcharts");
+    const go = (n) => {
+      const el = document.getElementById("lqc-" + key);
+      if (el) return el.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (n > 0 && !(typeof LQ !== "undefined" && LQ.data)) return setTimeout(() => go(n - 1), 300);
+      toast("此指標無歷史序列（手動或季度資料）");
+    };
+    setTimeout(() => go(20), 150);
     return;
   }
   const t = e.target.closest("[data-star],[data-save],[data-share],[data-ev],[data-more],[data-span],[data-cat],[data-goto],[data-view],[data-sym],[data-g],[data-theme],[data-preset],[data-sort],[data-ind],[data-pg]");
