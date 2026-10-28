@@ -159,7 +159,7 @@ function renderMonitor() {
     const act = r.level != null ? (r.actions[r.level] || r.actions[0] || "") : "—";
     const allActs = Object.entries(r.actions).map(([k, v]) => `${{ 0: "正常", 1: "一級", 2: "二級" }[k]}：${v}`).join("\n");
     h += `<tr class="${r.level >= 1 ? "row-lv" + r.level : ""}">
-      <td class="facet">${esc(r.label)}<small>${esc(gname[r.group] || "")}</small></td>
+      <td class="facet"><a class="to-chart" href="#lqc-${r.key}" data-tochart="${r.key}" title="看歷史圖表">${esc(r.label)} <span>📈</span></a><small>${esc(gname[r.group] || "")}</small></td>
       <td>${esc(r.metric)}${r.auto ? '<span class="badge auto">自動</span>' : r.manual ? '<span class="badge man">手動</span>' : ""}<div class="src">${esc(r.source)}</div></td>
       <td class="r"><div class="val num">${esc(r.display)}</div><div class="small" style="white-space:nowrap">${esc(r.asof || "")}</div></td>
       <td>${spark(r.spark, 100, 28, "var(--green)")}</td>
@@ -327,7 +327,7 @@ function setView(v, push = true) {
   document.querySelectorAll("#views a").forEach((a) => a.classList.toggle("on", a.dataset.view === v));
   if (push) history.replaceState(null, "", "#" + v + (v === "news" && state.ev ? "/" + state.ev : ""));
   window.scrollTo(0, 0);
-  if (v === "liquidity" && typeof loadCharts === "function") loadCharts();
+  if (["liquidity", "monitor", "overview"].includes(v) && typeof loadCharts === "function") loadCharts(v);
 }
 function route() {
   const [v, id] = (location.hash.slice(1) || "news").split("/");
@@ -469,6 +469,13 @@ function gotoTicker(sym) {
 
 // ---------------------------------------------------------------- events
 document.addEventListener("click", (e) => {
+  const tc = e.target.closest("[data-tochart]");
+  if (tc) {
+    e.preventDefault();
+    const el = document.getElementById("lqc-" + tc.dataset.tochart);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" }); else toast("此指標無歷史序列（手動或季度資料）");
+    return;
+  }
   const t = e.target.closest("[data-star],[data-save],[data-share],[data-ev],[data-more],[data-span],[data-cat],[data-goto],[data-view],[data-sym],[data-g],[data-theme],[data-preset],[data-sort],[data-ind],[data-pg]");
   if (!t || !D) return;
   const ds = t.dataset;

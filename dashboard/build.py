@@ -165,6 +165,8 @@ def collect(demo: bool = False) -> dict:
             except Exception as e:  # noqa: BLE001
                 errors.append(f"multpl {path}：{str(e)[:100]}")
     chart_data = charts.build(fred, yahoo, valuation, manual.get("spx_fwd_pe"))
+    chart_data["monitor"] = charts.build_monitor(fred, yahoo)
+    chart_data["overview"] = charts.build_overview(yahoo)
 
     ctx = indicators.Ctx(yahoo, fred, manual)
     ind_rows = indicators.build(ctx)

@@ -205,3 +205,90 @@ def build(fred: dict, yahoo: dict, valuation: dict, fwd_pe: dict | None) -> dict
             ch["series"] = [s for s in ch["series"] if s["data"]]
         p["charts"] = [ch for ch in p["charts"] if ch["series"]]
     return {"generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"), "panels": [p for p in panels if p["charts"]]}
+
+
+# ---------------------------------------------------------------- 指標監控圖表（含分級門檻線）
+def _yh(yahoo, sym):
+    h = yahoo.get(sym)
+    return list(zip(h["dates"], h["close"])) if h else []
+
+
+def _ref(v, label, lv):
+    return {"v": v, "label": label, "lv": lv}
+
+
+def build_monitor(fred: dict, yahoo: dict) -> list[dict]:
+    g = lambda k: fred.get(k) or []  # noqa: E731
+    cpi = g("CPIAUCSL")
+    cpi_yoy = [(cpi[i][0], (cpi[i][1] / cpi[i - 12][1] - 1) * 100) for i in range(12, len(cpi))]
+    effr, y1 = dict(g("EFFR")), g("DGS1")
+    pivot, last = [], None
+    for d, v in y1:
+        last = effr.get(d, last)
+        if last is not None:
+            pivot.append((d, max(0.0, (last - v) * 200)))
+    eq, gdp = g("NCBEILQ027S"), dict(g("GDP"))
+    buffett = [(d, v / 1000 / gdp[d] * 100) for d, v in eq if gdp.get(d)]
+    tw = yahoo.get("^TWII")
+    bias = []
+    if tw and len(tw["close"]) > 240:
+        c = tw["close"]
+        bias = [(tw["dates"][i], (c[i] / (sum(c[i - 239:i + 1]) / 240) - 1) * 100) for i in range(239, len(c))]
+    gold = _yh(yahoo, "GC=F")
+    gold_m1 = [(gold[i][0], (gold[i][1] / gold[i - 21][1] - 1) * 100) for i in range(21, len(gold))]
+    vix = g("VIXCLS") or _yh(yahoo, "^VIX")
+
+    def ch(key, title, unit, data, color, refs, years=3, kind="line"):
+        return {"key": key, "title": title, "unit": unit, "height": 170, "refs": refs,
+                "series": [_s(title, color, _cut(data, years), kind)]}
+
+    panels = [
+        {"id": "m-macro", "no": "M1", "title": "總經 / 利率", "subtitle": "門檻線：橘＝一級警戒、紅＝二級危機",
+         "charts": [
+             ch("cpi_yoy", "美國 CPI 年增率", "%", cpi_yoy, C[0], [_ref(3.2, "降溫 3.2%", 0), _ref(3.8, "偏鷹 3.8%", 2)], 6),
+             ch("us10y", "美國 10 年期公債殖利率", "%", g("DGS10"), C[1], [_ref(5.0, "一級 5.0%", 1), _ref(5.35, "二級 5.35%", 2)]),
+             ch("fed_pivot", "隱含 12 個月降息幅度（2×(EFFR−1Y)）", "bp", pivot, C[2], [_ref(50, "轉向 50bp", 1)]),
+             ch("bei5", "5 年期平衡通膨率", "%", g("T5YIE"), C[3], [_ref(2.6, "警戒 2.6%", 1), _ref(3.0, "失錨 3.0%", 2)]),
+             ch("sahm", "薩姆規則衰退指標", "%", g("SAHMREALTIME"), C[4], [_ref(0.35, "警戒 0.35", 1), _ref(0.5, "衰退 0.50", 2)], 6),
+             ch("curve_10y2y", "10Y−2Y 殖利率利差", "bp", _scale(g("T10Y2Y"), 100), C[6], [_ref(0, "倒掛 0", 1)]),
+         ]},
+        {"id": "m-credit", "no": "M2", "title": "信用 / 流動性", "subtitle": "高收益債利差與波動率",
+         "charts": [
+             ch("hy_oas", "ICE BofA 美國高收益債 OAS", "bp", _scale(g("BAMLH0A0HYM2"), 100), C[0], [_ref(450, "警戒 450", 1), _ref(520, "危機 520", 2)]),
+             ch("vix", "VIX 波動率指數", "", vix, C[1], [_ref(22, "分歧 22", 1), _ref(35, "恐慌 35", 2)]),
+         ]},
+        {"id": "m-val", "no": "M3", "title": "美股評價 / 台股動能", "subtitle": "長期估值錨與年線乖離",
+         "charts": [
+             ch("buffett", "巴菲特指標（股權市值 / GDP）", "%", buffett, C[0], [_ref(170, "過熱 170%", 1), _ref(200, "極端 200%", 2)], 8),
+             ch("taiex_bias", "台股加權指數 240 日乖離率", "%", bias, C[1], [_ref(25, "一級 +25%", 1), _ref(35, "二級 +35%", 2), _ref(-10, "−10%", 0)], 2),
+         ]},
+        {"id": "m-geo", "no": "M4", "title": "地緣 / 外匯 / 商品", "subtitle": "油價、美元與避險需求",
+         "charts": [
+             ch("brent", "Brent 原油期貨", "USD", _yh(yahoo, "BZ=F"), C[0], [_ref(70, "停火確認 70", 0), _ref(90, "警戒 90", 1), _ref(100, "滯脹 100", 2)], 2),
+             ch("dxy", "美元指數 DXY", "", _yh(yahoo, "DX-Y.NYB"), C[1], [_ref(98, "一級 98", 1), _ref(94, "二級 94", 2)], 2),
+             ch("gold", "黃金 1 個月漲幅", "%", gold_m1, C[2], [_ref(8, "升溫 8%", 1), _ref(15, "極端 15%", 2)], 2),
+         ]},
+    ]
+    for p in panels:
+        p["charts"] = [c for c in p["charts"] if c["series"][0]["data"]]
+        p["defs"] = []
+        p["years"] = max([8 if c["key"] == "buffett" else 6 if c["key"] in ("cpi_yoy", "sahm") else 3 for c in p["charts"]] or [3])
+    return [p for p in panels if p["charts"]]
+
+
+# ---------------------------------------------------------------- 市場概況圖表（指數化＝100）
+def build_overview(yahoo: dict) -> list[dict]:
+    from .universe import META
+
+    def grp(pid, no, title, sub, syms):
+        series = [_s(META.get(s, {}).get("name", s), C[i], _cut(_yh(yahoo, s), 2)) for i, s in enumerate(syms) if yahoo.get(s)]
+        return {"id": pid, "no": no, "title": title, "subtitle": sub, "years": 2, "defs": [],
+                "charts": [{"unit": "", "height": 300, "index": True, "series": series}]}
+
+    panels = [
+        grp("o-eq-a", "O1", "美國與台灣股市", "以區間起點＝100 指數化", ["^GSPC", "^NDX", "^SOX", "^TWII"]),
+        grp("o-eq-b", "O2", "亞洲與歐洲股市", "以區間起點＝100 指數化", ["^N225", "^KS11", "^HSI", "000001.SS", "^STOXX50E", "^BSESN"]),
+        grp("o-cmd", "O3", "商品與加密資產", "以區間起點＝100 指數化", ["BZ=F", "GC=F", "HG=F", "BTC-USD"]),
+        grp("o-fx", "O4", "匯率", "以區間起點＝100 指數化（數值上升＝美元走強）", ["DX-Y.NYB", "TWD=X", "JPY=X", "CNY=X"]),
+    ]
+    return [p for p in panels if p["charts"][0]["series"]]
