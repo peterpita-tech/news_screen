@@ -87,6 +87,37 @@ def yahoo_history(symbol: str, range_: str = "2y", interval: str = "1d") -> dict
     raise RuntimeError(f"Yahoo {symbol}: {last}")
 
 
+def yahoo_quotes(symbols: list[str], fields: str = "trailingPE,forwardPE,marketCap", batch: int = 150) -> dict:
+    """Yahoo v7 quote（需 cookie + crumb）：回傳 {symbol: {trailingPE, forwardPE, marketCap}}。"""
+    import http.cookiejar
+    jar = http.cookiejar.CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar), urllib.request.HTTPSHandler(context=_CTX))
+    opener.addheaders = [("User-Agent", UA), ("Accept", "*/*")]
+    try:
+        opener.open("https://fc.yahoo.com", timeout=15).read()
+    except Exception:  # noqa: BLE001 - fc.yahoo.com 常回 404，但會寫入 cookie
+        pass
+    crumb = opener.open("https://query2.finance.yahoo.com/v1/test/getcrumb", timeout=15).read().decode().strip()
+    if not crumb or "<" in crumb:
+        raise RuntimeError("取得 Yahoo crumb 失敗")
+    out = {}
+    for i in range(0, len(symbols), batch):
+        chunk = ",".join(urllib.parse.quote(x) for x in symbols[i:i + batch])
+        url = (f"https://query2.finance.yahoo.com/v7/finance/quote?symbols={chunk}&fields={fields}"
+               f"&crumb={urllib.parse.quote(crumb)}")
+        for attempt in range(2):
+            try:
+                data = json.loads(opener.open(url, timeout=25).read())
+                break
+            except Exception:  # noqa: BLE001
+                if attempt:
+                    data = {}
+                time.sleep(1.5)
+        for q in (data.get("quoteResponse") or {}).get("result") or []:
+            out[q.get("symbol")] = {k: q.get(k) for k in ("trailingPE", "forwardPE", "marketCap") if q.get(k) is not None}
+    return out
+
+
 # ---------------------------------------------------------------- FRED
 def _fred_api(series_id: str, key: str) -> list[tuple[str, float]]:
     url = ("https://api.stlouisfed.org/fred/series/observations?file_type=json"

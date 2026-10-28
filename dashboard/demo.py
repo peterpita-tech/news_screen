@@ -37,7 +37,10 @@ def yahoo_history(sym):
     return {"symbol": sym, "name": sym, "currency": "USD", "dates": _dates(n), "close": [x * scale for x in xs]}
 
 
-FRED_LEVEL = {"EFFR": (4.1, 0.01), "DGS1": (3.6, 0.02), "DGS2": (3.5, 0.03), "DGS10": (4.15, 0.04),
+FRED_LEVEL = {"IORB": (3.9, 0.0), "SOFR": (3.95, 0.03), "RRPONTSYAWARD": (3.75, 0.0), "DFEDTARU": (4.0, 0.0),
+              "DFEDTARL": (3.75, 0.0), "RPONTSYD": (2.0, 3.0), "WALCL": (6600000, 8000), "WTREGEN": (850, 30),
+              "RRPONTSYD": (120, 15), "WRESBAL": (3200, 30), "DGS3MO": (3.9, 0.02), "DGS30": (4.7, 0.04),
+              "BAMLC0A0CM": (0.85, 0.02), "VIXCLS": (17, 0.8),"EFFR": (4.1, 0.01), "DGS1": (3.6, 0.02), "DGS2": (3.5, 0.03), "DGS10": (4.15, 0.04),
               "T5YIE": (2.4, 0.02), "T10Y2Y": (0.62, 0.03), "BAMLH0A0HYM2": (2.95, 0.04)}
 
 
@@ -115,3 +118,19 @@ def market():
     return {"rows": rows, "meta": {"美股": {"date": "demo"}, "台股": {"date": "demo"}},
             "chain_link": "https://peterpita-tech.github.io/semi_value_chain/web/", "chain_matched": 6,
             "sources": {"美股": "https://peterpita-tech.github.io/Peterpita/", "台股": "https://peterpita-tech.github.io/Peterpita/tw/"}}
+
+
+def quotes(symbols):
+    rng = _rng("quotes")
+    return {s: {"trailingPE": round(rng.uniform(8, 45), 1), "forwardPE": round(rng.uniform(7, 35), 1)} for s in symbols}
+
+
+def valuation():
+    rng = _rng("pe")
+    out_pe, out_cape, v, c = [], [], 22.0, 33.0
+    d = datetime.now() - timedelta(days=3650)
+    while d < datetime.now():
+        v = max(14, v + rng.gauss(0, 0.6)); c = max(20, c + rng.gauss(0, 0.8))
+        out_pe.append((d.strftime("%Y-%m-01"), round(v, 2))); out_cape.append((d.strftime("%Y-%m-01"), round(c, 2)))
+        d += timedelta(days=31)
+    return {"pe": out_pe, "cape": out_cape}

@@ -1,17 +1,19 @@
 :root {
-  --bg: #f6f6f3;
-  --panel: #ffffff;
-  --soft: #f8f8f6;
-  --ink: #141414;
-  --ink-2: #3d3d3d;
-  --ink-3: #7a7a76;
-  --line: #e4e4df;
-  --line-2: #efefeb;
-  --green: #1d5c45;        /* 主色：深綠 */
-  --green-2: #23704f;
-  --green-ink: #2b7a5a;    /* 次要綠字（分類 / 地區） */
-  --green-tint: #eef5f1;
-  --green-tint-2: #f3f8f5;
+  --bg: #e7e6e1;           /* 頁面底色：較深的暖灰，讓面板層次分明 */
+  --panel: #f6f5f1;        /* 主要面板：淺灰（不用純白） */
+  --soft: #efeee9;         /* 次要底色 / 表頭 */
+  --raise: #fbfaf7;        /* 輸入框、卡片等需要凸顯處 */
+  --chart-bg: #f6f5f1;
+  --ink: #0f0f0f;
+  --ink-2: #2f2f2c;
+  --ink-3: #5f5e58;
+  --line: #cfcec6;
+  --line-2: #dfded7;
+  --green: #17543d;        /* 主色：深綠 */
+  --green-2: #1f6a4a;
+  --green-ink: #22704f;
+  --green-tint: #dfece4;
+  --green-tint-2: #e9f1ec;
   --gold: #9a7a2c;
   --gold-tint: #fbf6e9;
   --up: #c62828;
@@ -38,7 +40,7 @@ button, select, input { font: inherit; color: var(--ink); }
 [hidden] { display: none !important; }
 
 /* ---------------------------------------------------------------- header */
-.hd { background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 30; }
+.hd { background: #f1f0eb; border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 30; }
 .hd-in { max-width: 1520px; margin: 0 auto; padding: 14px 28px 10px; display: flex; align-items: flex-end; gap: 28px; flex-wrap: wrap; }
 .logo { font-family: var(--serif); font-weight: 700; font-size: 32px; line-height: 1; margin: 0; letter-spacing: .2px; }
 .tagline { color: var(--green); font-weight: 700; font-size: 13px; margin-top: 6px; }
@@ -76,7 +78,7 @@ details.errs { margin-top: 6px; color: var(--ink-3); }
 .switch input:checked + i::after { left: 17px; }
 .linkbtn { border: 0; background: transparent; display: inline-flex; align-items: center; gap: 5px; color: var(--ink-2); font-weight: 500; }
 .linkbtn.on, .linkbtn:hover { color: var(--green); }
-.search { flex: 1; min-width: 220px; display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 0 12px; color: var(--ink-3); }
+.search { flex: 1; min-width: 220px; display: flex; align-items: center; gap: 8px; background: var(--raise); border: 1px solid var(--line); border-radius: 6px; padding: 0 12px; color: var(--ink-3); }
 .search input { border: 0; outline: 0; flex: 1; padding: 8px 0; background: transparent; }
 .search:focus-within { border-color: var(--green); }
 .search.sm { flex: 0 1 240px; min-width: 180px; }
@@ -282,3 +284,53 @@ th.hl { background: var(--green) !important; color: #fff; }
 .dt-body.empty { font-size: 13.5px; color: var(--ink-3); background: var(--soft); border: 1px dashed var(--line); border-radius: 8px; padding: 14px 16px; }
 .dt-body.empty a, .dt-src a { color: var(--green); font-weight: 600; }
 .dt-src { font-size: 12px; color: var(--ink-3); margin: 4px 0 22px; padding-top: 10px; border-top: 1px solid var(--line-2); }
+
+/* 對比強化：主要區塊之間用底色分層 */
+.ev-layout { background: var(--panel); }
+.ev.sel { background: var(--green-tint); }
+.ev-side { background: #ebeae4; }
+.side-box, .card, .tbl-wrap, .lq-panel { background: var(--panel); border-color: var(--line); box-shadow: 0 1px 0 rgba(0,0,0,.03); }
+th { background: #e6e5df; color: var(--ink-2); }
+tbody tr:nth-child(even) td { background: #f1f0eb; }
+.impact { background: #e4efe8; border-color: #bcd5c6; }
+.filters select, .pager button, button.ghost { background: var(--raise); }
+.cats { border-bottom-color: var(--line); }
+
+/* ---------------------------------------------------------------- 流動性圖表 */
+.lq-panel { border: 1px solid var(--line); border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
+.lq-hd { display: flex; align-items: baseline; gap: 12px; padding: 16px 20px; cursor: pointer; user-select: none; }
+.lq-hd:hover { background: var(--soft); }
+.lq-no { color: #c4532a; font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums; }
+.lq-hd h3 { margin: 0; font-size: 17px; font-weight: 700; }
+.lq-sub { color: var(--ink-3); font-size: 12.5px; }
+.lq-caret { margin-left: auto; color: var(--ink-3); transition: transform .15s; transform: rotate(180deg); }
+.lq-panel.open .lq-caret { transform: none; }
+.lq-body { display: none; padding: 0 20px 18px; }
+.lq-panel.open .lq-body { display: block; }
+.lq-kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); gap: 10px; margin-bottom: 12px; }
+.lq-kpi { background: var(--raise); border: 1px solid var(--line-2); border-radius: 8px; padding: 10px 12px; }
+.lq-kpi .n { font-size: 12px; color: var(--ink-3); }
+.lq-kpi .v { font-size: 22px; font-weight: 700; }
+.lq-kpi .s { font-size: 11px; color: var(--ink-3); line-height: 1.4; }
+.lq-ranges { display: flex; gap: 4px; justify-content: flex-end; margin-bottom: 4px; }
+.lq-ranges button { border: 1px solid var(--line); background: var(--raise); border-radius: 5px; padding: 2px 9px; font-size: 12px; cursor: pointer; }
+.lq-ranges button.on { background: var(--green); color: #fff; border-color: var(--green); }
+.lq-charts { width: 100%; touch-action: pan-y; }
+.lq-chart + .lq-chart { border-top: 1px dashed var(--line-2); }
+.lq-chart svg { display: block; }
+.lq-chart .grid { stroke: #dddcd5; stroke-width: 1; }
+.lq-chart .zero { stroke: #9a998f; stroke-width: 1; }
+.lq-chart .ax { fill: var(--ink-3); font-size: 11px; font-family: var(--sans); }
+.lq-chart .cross { stroke: #2f2f2c; stroke-width: 1; }
+.lq-chart .hit { cursor: crosshair; }
+.lq-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 12.5px; color: var(--ink-2); }
+.lg { display: inline-flex; align-items: center; gap: 6px; }
+.lg b { color: var(--ink); }
+.lg .d { color: var(--ink-3); font-size: 11.5px; }
+.sw { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.sw.bar { height: 10px; width: 10px; border-radius: 2px; opacity: .75; }
+.lq-info { margin-top: 10px; background: #ebeae4; border: 1px solid var(--line-2); border-radius: 8px; padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 12.5px; min-height: 42px; align-items: center; }
+.lq-info .dt { width: 100%; font-weight: 700; font-size: 13px; }
+.lq-defs { margin-top: 10px; font-size: 12.5px; color: var(--ink-2); }
+.lq-defs summary { cursor: pointer; color: var(--ink-3); }
+.lq-defs p { margin: 6px 0; }

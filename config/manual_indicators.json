@@ -1,6 +1,6 @@
 {
   "_說明": "無免費公開 API 的指標請在此手動更新：value 填數值（未知請填 null），asof 填資料日期，note 註明來源。存檔後按儀表板「重新整理」或等下次排程即生效。",
-  "spx_fwd_pe": {"value": null, "asof": null, "note": "S&P 500 未來 12 個月預估本益比（倍），來源：FactSet Earnings Insight / Yardeni"},
+  "spx_fwd_pe": {"value": 19.5, "asof": "2026-10-19", "note": "手動：UBS Global Equity Strategy（2026-10-19）S&P 500 NTM P/E <20x、自 11 月高點下修約 20%（圖表讀值約 19.5x）"},
   "ism_pmi": {"value": null, "asof": null, "note": "ISM 製造業 PMI，每月第一個營業日公布"},
   "ndc_signal": {"value": null, "asof": null, "note": "國發會景氣對策信號綜合分數（9–45）"},
   "margin_ratio": {"value": null, "asof": null, "note": "台股大盤融資維持率（%）"},

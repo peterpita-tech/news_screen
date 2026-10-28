@@ -327,12 +327,13 @@ function setView(v, push = true) {
   document.querySelectorAll("#views a").forEach((a) => a.classList.toggle("on", a.dataset.view === v));
   if (push) history.replaceState(null, "", "#" + v + (v === "news" && state.ev ? "/" + state.ev : ""));
   window.scrollTo(0, 0);
+  if (v === "liquidity" && typeof loadCharts === "function") loadCharts();
 }
 function route() {
   const [v, id] = (location.hash.slice(1) || "news").split("/");
   if (id) state.ev = id;
   if (v === "news" && id) renderNews();
-  setView(["news", "monitor", "scenario", "screener", "overview"].includes(v) ? v : "news", false);
+  setView(["news", "liquidity", "monitor", "scenario", "screener", "overview"].includes(v) ? v : "news", false);
 }
 
 // ---------------------------------------------------------------- 跨資產＋台美全市場篩選
@@ -368,7 +369,7 @@ const PRESETS = [
 const COLS = [
   ["symbol", "代號"], ["name", "名稱"], ["market", "市場"], ["sector", "產業 / 供應鏈"],
   ["last", "最新價", "r"], ["chg1d", "1日", "r"], ["chg1m", "1月", "r"], ["chg3m", "3月", "r"], ["ytd", "今年", "r"],
-  ["bias240", "年線乖離", "r"], ["biasMA", "月線乖離", "r"], ["rsi14", "RSI", "r"], ["winPct", "獲利比例", "r"], ["zscore", "籌碼強勢", "r"],
+  ["bias240", "年線乖離", "r"], ["biasMA", "月線乖離", "r"], ["rsi14", "RSI", "r"], ["pe", "本益比", "r"], ["fpe", "預估本益比", "r"], ["winPct", "獲利比例", "r"], ["zscore", "籌碼強勢", "r"],
   ["news", "新聞分數", "r"], ["score", "綜合分數", "r"], ["spark", "走勢 / 連結"],
 ];
 const SORT_TEXT = ["symbol", "name", "market", "sector"];
@@ -446,6 +447,7 @@ function drawScreenerTable() {
       <td class="r num">${fmtPrice(r.last)}</td><td class="r num">${fmtPct(r.chg1d, 2)}</td><td class="r num">${fmtPct(r.chg1m)}</td>
       <td class="r num">${fmtPct(r.chg3m)}</td><td class="r num">${fmtPct(r.ytd)}</td>
       <td class="r num">${bias}</td><td class="r num">${fmtPct(r.biasMA)}</td><td class="r num">${rsi}</td>
+      <td class="r num">${numCell(r.pe, (v) => v.toFixed(1))}</td><td class="r num">${numCell(r.fpe, (v) => v.toFixed(1))}</td>
       <td class="r num">${numCell(r.winPct, (v) => v.toFixed(0) + "%")}</td><td class="r num">${numCell(r.zscore, (v) => v.toFixed(0))}</td>
       <td class="r num">${news}</td><td class="r num"><b>${r.score == null ? "—" : r.score.toFixed(0)}</b></td>
       <td>${r.spark ? spark(r.spark, 90, 22) : ""}${links}</td></tr>`;

@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from . import article, autofill, fetchers, indicators, integrate, market, news, scenarios, screener
+from . import article, autofill, charts, fetchers, indicators, integrate, market, news, scenarios, screener
 from .themes import THEMES
 from .universe import META, OVERVIEW, UNIVERSE
 
@@ -17,6 +17,7 @@ MANUAL_PATH = ROOT / "config" / "manual_indicators.json"
 
 FRED_IDS = ["EFFR", "DGS1", "DGS2", "DGS10", "CPIAUCSL", "T5YIE", "SAHMREALTIME", "T10Y2Y",
             "BAMLH0A0HYM2", "NCBEILQ027S", "GDP"]
+FRED_IDS += [x for x in dict.fromkeys(charts.CHART_FRED) if x not in FRED_IDS]
 
 TPE = timezone(timedelta(hours=8))
 
@@ -126,6 +127,26 @@ def collect(demo: bool = False) -> dict:
             r["news"] = round((r.get("news") or 0) + st["news"], 1)
             r["mentions"] = st["mentions"]
     integrate.theme_market_leaders(theme_sum, news_items)
+
+    # 個股本益比 / 預估本益比（Yahoo quote）
+    quotes = {}
+    if demo:
+        from . import demo as dm
+        quotes = dm.quotes([r["symbol"] for r in rows + mk_rows])
+    else:
+        try:
+            syms = [r["symbol"] for r in rows + mk_rows if r.get("asset") in ("股票", "ETF")]
+            quotes = fetchers.yahoo_quotes(syms)
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"個股本益比（Yahoo quote）：{str(e)[:100]}")
+    for r in rows + mk_rows:
+        q = quotes.get(r["symbol"]) or {}
+        if q.get("trailingPE") and 0 < q["trailingPE"] < 2000:
+            r["pe"] = round(q["trailingPE"], 1)
+        elif r.get("pe") is not None and not isinstance(r.get("pe"), (int, float)):
+            r.pop("pe", None)
+        if q.get("forwardPE") and 0 < q["forwardPE"] < 2000:
+            r["fpe"] = round(q["forwardPE"], 1)
     integrate.score_full(mk_rows)
     screener.score_all(rows)
     for r in rows:
@@ -133,9 +154,26 @@ def collect(demo: bool = False) -> dict:
             if isinstance(v, float):
                 r[k] = round(v, 4 if k == "last" else 2)
 
+    # S&P 500 本益比 / Shiller CAPE（multpl.com 月表）
+    valuation = {}
+    if demo:
+        valuation = dm.valuation()
+    else:
+        for key, path in (("pe", "s-p-500-pe-ratio"), ("cape", "shiller-pe")):
+            try:
+                valuation[key] = charts.multpl_table(path)
+            except Exception as e:  # noqa: BLE001
+                errors.append(f"multpl {path}：{str(e)[:100]}")
+    chart_data = charts.build(fred, yahoo, valuation, manual.get("spx_fwd_pe"))
+
     ctx = indicators.Ctx(yahoo, fred, manual)
     ind_rows = indicators.build(ctx)
     ind_rows.append(indicators.breadth_row(rows))
+    if valuation.get("pe"):
+        for r in ind_rows:
+            if r["key"] == "spx_pe":
+                d, v = valuation["pe"][-1]
+                r["note"] = (r.get("note") or "") + f"｜本益比（TTM）{v:.1f}x（{d}，multpl.com）"
     sc = scenarios.evaluate(ind_rows)
 
     by_sym = {r["symbol"]: r for r in rows}
@@ -158,6 +196,8 @@ def collect(demo: bool = False) -> dict:
         "theme_names": {t["id"]: t["name"] for t in THEMES},
         "news": news_items,
         "article_stats": art_stats,
+        "charts": chart_data,
+        "spx_pe_ttm": valuation.get("pe", [[None, None]])[-1] if valuation.get("pe") else None,
         "market": {**{k: v for k, v in mk.items() if k != "rows"}, "rows": mk_rows},
         "names": _names(news_items, theme_sum, rows + mk_rows),
         "manual_asof": {k: v.get("asof") for k, v in manual.items() if isinstance(v, dict)},
@@ -183,6 +223,7 @@ def write_all(folder: Path, data: dict) -> None:
     mk = data.pop("market", None) or {"rows": []}
     data["market_meta"] = {k: v for k, v in mk.items() if k != "rows"} | {"count": len(mk["rows"])}
     write(folder / "market.json", mk)
+    write(folder / "charts.json", data.pop("charts", None) or {"panels": []})
     write(folder / "data.json", data)
 
 
