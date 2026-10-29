@@ -2,7 +2,8 @@ name: 更新儀表板並發布 GitHub Pages
 
 on:
   schedule:
-    - cron: "17 */2 * * *"   # 每 2 小時更新一次（UTC）
+    # GitHub 排程在尖峰時段常延遲或略過，排密一點（每 30 分鐘）確保實際約 1 小時內更新一次
+    - cron: "7,37 * * * *"
   workflow_dispatch:
   push:
     branches: [main, master]

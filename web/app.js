@@ -88,6 +88,8 @@ function render() {
   const c = D.counts;
   $("#updated").innerHTML = `更新 <b>${esc(D.generated_at_tpe)}</b>（台北）· 新聞 ${c.news} 則`;
   let b = "";
+  const ageH = (Date.now() - new Date(D.generated_at).getTime()) / 3600e3;
+  if (!D.demo && ageH > 2) b += `<div class="banner">⏱ 資料更新於 <b>${ageH < 24 ? Math.round(ageH) + " 小時" : Math.round(ageH / 24) + " 天"}前</b>（${esc(D.generated_at_tpe)} 台北時間）。GitHub 自動排程偶爾延遲，可到 repo 的 Actions →「更新儀表板並發布 GitHub Pages」→ Run workflow 立即更新。</div>`;
   if (D.demo) b += `<div class="banner">⚠ 目前為<b>示範資料</b>（隨機模擬行情與範例新聞），非真實市場數據。實際使用請執行 <code>python app.py</code> 或由 GitHub Actions 產生。</div>`;
   if (D.error_count) b += `<div class="banner err">部分資料來源抓取失敗 ${D.error_count} 筆（其餘資料正常顯示）。<details class="errs"><summary>查看明細</summary>${D.errors.map(esc).join("<br>")}</details></div>`;
   $("#banners").innerHTML = b;
