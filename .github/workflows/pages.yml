@@ -12,14 +12,14 @@ permissions:
   contents: read
   pages: write
   id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
+  actions: write   # 讓最後一步能觸發下一輪（workflow_dispatch）
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    concurrency:
+      group: pages-build
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -42,9 +42,38 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    concurrency:
+      group: pages-deploy
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # GitHub 的 schedule 常延遲數小時；改由每一輪結束後等到下一個 :00 / :30 自行觸發下一輪。
+  # 多條鏈同時存在時，只有「最新的那一輪」會觸發，避免越跑越多；排程（cron）保留作為斷鏈時的備援。
+  next:
+    needs: [build, deploy]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: 等到下一個整點 / 半點後觸發下一輪
+        run: |
+          now=$(date +%s); next=$(( (now / 1800 + 1) * 1800 )); wait=$(( next - now ))
+          echo "等待 ${wait} 秒（至 $(date -u -d @${next} +%H:%M) UTC）"
+          sleep "$wait"
+          newer=$(gh run list -R "$GITHUB_REPOSITORY" --workflow pages.yml --limit 30 \
+            --json databaseId,status \
+            --jq "[.[] | select(.databaseId > ${GITHUB_RUN_ID} and (.status == \"queued\" or .status == \"in_progress\" or .status == \"waiting\" or .status == \"pending\" or .status == \"requested\"))] | length")
+          if [ "$newer" -gt 0 ]; then
+            echo "已有較新的更新在進行（${newer} 個），由它接續，不重複觸發。"
+          else
+            gh workflow run pages.yml -R "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"
+            echo "已觸發下一輪更新。"
+          fi
+
