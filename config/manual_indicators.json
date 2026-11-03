@@ -1,13 +1,53 @@
 {
   "_說明": "無免費公開 API 的指標請在此手動更新：value 填數值（未知請填 null），asof 填資料日期，note 註明來源。存檔後按儀表板「重新整理」或等下次排程即生效。",
-  "spx_fwd_pe": {"value": 19.5, "asof": "2026-10-19", "note": "手動：UBS Global Equity Strategy（2026-10-19）S&P 500 NTM P/E <20x、自 11 月高點下修約 20%（圖表讀值約 19.5x）"},
-  "ism_pmi": {"value": null, "asof": null, "note": "ISM 製造業 PMI，每月第一個營業日公布"},
-  "ndc_signal": {"value": null, "asof": null, "note": "國發會景氣對策信號綜合分數（9–45）"},
-  "margin_ratio": {"value": null, "asof": null, "note": "台股大盤融資維持率（%）"},
-  "foreign_futures_net_oi": {"value": null, "asof": null, "note": "外資台指期淨未平倉口數，淨空單請填負數（例：-32000）"},
-  "export_orders_yoy": {"value": null, "asof": null, "note": "外銷訂單年增率（%）"},
-  "coreweave_cds_bp": {"value": null, "asof": null, "note": "CoreWeave CDS 相較基準變動（bp）"},
-  "csp_capex_revision": {"value": null, "asof": null, "note": "微軟、Alphabet、亞馬遜、Meta 資本支出指引修正幅度（%），下修填負數"},
-  "tsmc_capex_yoy": {"value": null, "asof": null, "note": "台積電全年資本支出指引年增率（%）"},
-  "tw_cds_change_bp": {"value": null, "asof": null, "note": "台灣 5Y 主權 CDS 相較 3 個月前變動（bp）"}
+  "spx_fwd_pe": {
+    "value": 19.5,
+    "asof": "2026-10-19",
+    "note": "手動：UBS Global Equity Strategy（2026-10-19）S&P 500 NTM P/E <20x、自 11 月高點下修約 20%（圖表讀值約 19.5x）"
+  },
+  "ism_pmi": {
+    "value": null,
+    "asof": null,
+    "note": "ISM 製造業 PMI，每月第一個營業日公布"
+  },
+  "ndc_signal": {
+    "value": null,
+    "asof": null,
+    "note": "國發會景氣對策信號綜合分數（9–45）"
+  },
+  "margin_ratio": {
+    "value": 171.7,
+    "asof": "2026-11-02",
+    "note": "手動：上市融資維持率約 171.7%（玩股網 11/02 統計）；11/03 大盤重挫逾 1,600 點，維持率預期進一步下滑"
+  },
+  "foreign_futures_net_oi": {
+    "value": -91812,
+    "asof": "2026-11-03",
+    "note": "手動：外資台指期淨空單約 89,379～91,812 口（玩股網，2026-11-03），取高檔 91,812 口"
+  },
+  "export_orders_yoy": {
+    "value": null,
+    "asof": null,
+    "note": "外銷訂單年增率（%）"
+  },
+  "coreweave_cds_bp": {
+    "value": null,
+    "asof": null,
+    "note": "CoreWeave CDS 相較基準變動（bp）"
+  },
+  "csp_capex_revision": {
+    "value": null,
+    "asof": null,
+    "note": "微軟、Alphabet、亞馬遜、Meta 資本支出指引修正幅度（%），下修填負數"
+  },
+  "tsmc_capex_yoy": {
+    "value": null,
+    "asof": null,
+    "note": "台積電全年資本支出指引年增率（%）"
+  },
+  "tw_cds_change_bp": {
+    "value": null,
+    "asof": null,
+    "note": "台灣 5Y 主權 CDS 相較 3 個月前變動（bp）"
+  }
 }
