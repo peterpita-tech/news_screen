@@ -2,7 +2,7 @@
 /* 流動性動態圖表：純 SVG，無外部套件。
    每個 panel 由多張共用時間軸的子圖組成（單一 y 軸），滑鼠 / 觸控十字線同步，下方資訊框顯示該日各序列數值。 */
 const LQ = { data: null, range: {}, open: {}, hover: {} };
-const RANGES = [["3M", 92], ["6M", 183], ["1Y", 366], ["2Y", 731], ["3Y", 1100], ["10Y", 3660]];
+const RANGES = [["3M", 92], ["6M", 183], ["1Y", 366], ["2Y", 731], ["3Y", 1100], ["5Y", 1830], ["10Y", 3660], ["20Y", 7310], ["全部", 14000]];
 
 function lqEsc(s) { return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 const toT = (d) => Date.parse(d + "T00:00:00Z");
@@ -10,7 +10,7 @@ function fmtV(v, unit) {
   if (v == null || isNaN(v)) return "—";
   const a = Math.abs(v);
   const s = a >= 1000 || unit === "bp" ? v.toLocaleString("en-US", { maximumFractionDigits: 0 }) : a >= 100 ? v.toFixed(1) : v.toFixed(2);
-  return unit === "%" ? s + "%" : unit === "bp" ? s + " bp" : unit === "倍" ? s + "x" : unit ? s + " " + unit : s;
+  return unit === "%" ? s + "%" : unit === "百分點" ? (v > 0 ? "+" : "") + s + " pp" : unit === "bp" ? s + " bp" : unit === "倍" ? s + "x" : unit ? s + " " + unit : s;
 }
 function niceTicks(lo, hi, n = 4) {
   const span = hi - lo || 1, step0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(step0)));
@@ -67,7 +67,11 @@ function renderSet(set) {
   const ps = LQ.data[key] || [];
   if (set === "liquidity") $("#lqMeta").textContent = `資料時間 ${LQ.data.generated_at}（FRED、multpl.com、Yahoo Finance）`;
   if (!ps.length) { box.innerHTML = '<div class="ev-empty">尚無圖表資料</div>'; return; }
-  box.innerHTML = ps.map((p) => {
+  box.innerHTML = ps.map(panelHtml).join("");
+  for (const p of ps) if (LQ.open[p.id]) drawPanel(p);
+}
+
+function panelHtml(p) {
     if (LQ.open[p.id] === undefined) LQ.open[p.id] = true;
     if (!LQ.range[p.id]) LQ.range[p.id] = p.years >= 10 ? "10Y" : "1Y";
     const ranges = RANGES.filter(([k, d]) => d <= (p.years || 3) * 366 + 10);
@@ -82,8 +86,6 @@ function renderSet(set) {
         <div class="lq-info" id="lqi-${p.id}"><span class="small">將游標移到圖上查看各日數值</span></div>
         ${p.defs && p.defs.length ? `<details class="lq-defs"><summary>由上到下點開看定義</summary>${p.defs.map((d) => `<p><b>${lqEsc(d.term)}</b>：${lqEsc(d.text)}</p>`).join("")}</details>` : ""}
       </div></section>`;
-  }).join("");
-  for (const p of ps) if (LQ.open[p.id]) drawPanel(p);
 }
 
 function drawPanel(p) {
@@ -181,7 +183,7 @@ function hoverPanel(p, t) {
 
 function lqPointer(e) {
   const hit = e.target.closest && e.target.closest("[data-hp]");
-  if (!hit || !LQ.data) return;
+  if (!hit) return;
   const p = LQ.byId[hit.dataset.hp];
   const g = p && p._geo;
   if (!g) return;
@@ -193,12 +195,16 @@ document.addEventListener("pointermove", lqPointer);
 document.addEventListener("pointerdown", lqPointer);
 document.addEventListener("click", (e) => {
   const tg = e.target.closest("[data-lqtoggle],[data-lqrange]");
-  if (!tg || !LQ.data) return;
-  const setOf = (id) => Object.keys(SETS).find((k) => (LQ.data[SETS[k][0]] || []).some((p) => p.id === id));
+  if (!tg) return;
+  const setOf = (id) => Object.keys(SETS).find((k) => (LQ.data && LQ.data[SETS[k][0]] || []).some((p) => p.id === id));
+  if (tg.dataset.lqtoggle === "fredx" || (tg.dataset.lqrange || "").startsWith("fredx:")) {
+    if (tg.dataset.lqrange) { LQ.range.fredx = tg.dataset.lqrange.split(":")[1]; delete LQ.hover.fredx; }
+    return typeof renderFredChart === "function" && renderFredChart();
+  }
   if (tg.dataset.lqtoggle) { const id = tg.dataset.lqtoggle; LQ.open[id] = !LQ.open[id]; return renderSet(setOf(id)); }
   const [id, k] = tg.dataset.lqrange.split(":");
   LQ.range[id] = k; delete LQ.hover[id];
   renderSet(setOf(id));
 });
 let lqResize;
-window.addEventListener("resize", () => { clearTimeout(lqResize); lqResize = setTimeout(() => LQ.data && SETS[state.view] && renderSet(state.view), 150); });
+window.addEventListener("resize", () => { clearTimeout(lqResize); lqResize = setTimeout(() => { if (state.view === "fred" && typeof renderFredChart === "function") return renderFredChart(); if (LQ.data && SETS[state.view]) renderSet(state.view); }, 150); });

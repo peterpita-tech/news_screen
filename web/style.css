@@ -351,3 +351,31 @@ tbody tr:nth-child(even) td { background: #f1f0eb; }
 .views { margin-left: 4px; gap: 0; }
 .views a { padding: 6px 9px 8px; font-size: 13.5px; }
 .hd-in { gap: 20px; }
+
+/* ---------------------------------------------------------------- FRED 圖表 */
+.fr-layout { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 16px; align-items: start; }
+.fr-picker { padding: 12px; position: sticky; top: 100px; max-height: calc(100vh - 120px); display: flex; flex-direction: column; }
+.fr-search { display: flex; gap: 8px; align-items: center; }
+.fr-search input, .fr-custom input { flex: 1; border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; background: var(--raise); min-width: 0; }
+.fr-cats { display: flex; flex-wrap: wrap; gap: 4px; margin: 10px 0; }
+.fr-cats button, .fr-opts button:not(.ghost) { border: 1px solid var(--line); background: var(--raise); border-radius: 14px; padding: 2px 10px; font-size: 12px; cursor: pointer; }
+.fr-cats button.on, .fr-opts button.on { background: var(--green); border-color: var(--green); color: #fff; }
+.fr-list { overflow-y: auto; flex: 1; border-top: 1px solid var(--line-2); min-height: 120px; }
+.fr-item { display: grid; grid-template-columns: auto 1fr auto; grid-template-rows: auto auto; column-gap: 8px; padding: 7px 6px; border-bottom: 1px solid var(--line-2); cursor: pointer; font-size: 12.5px; }
+.fr-item:hover { background: var(--soft); }
+.fr-item.on { background: var(--green-tint); }
+.fr-id { font-weight: 700; font-variant-numeric: tabular-nums; grid-row: 1; }
+.fr-nm { grid-row: 1; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fr-meta { grid-column: 2; grid-row: 2; font-size: 11px; color: var(--ink-3); }
+.fr-plus { grid-column: 3; grid-row: 1 / span 2; align-self: center; color: var(--green); font-weight: 700; }
+.fr-custom { display: flex; gap: 6px; margin-top: 10px; }
+.fr-sel { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; min-height: 28px; align-items: center; }
+.fr-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--raise); border-radius: 16px; padding: 3px 6px 3px 10px; font-size: 12.5px; }
+.fr-chip i { width: 12px; height: 3px; border-radius: 2px; display: inline-block; }
+.fr-chip em { font-style: normal; color: var(--ink-3); font-size: 11px; }
+.fr-chip button { border: 0; background: transparent; cursor: pointer; color: var(--ink-3); padding: 0 4px; }
+.fr-chip button:hover { color: var(--lv2); }
+.fr-opts { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-bottom: 10px; }
+.fr-opts .lab { font-size: 12px; color: var(--ink-3); margin-left: 6px; }
+.fr-opts .ghost { margin-left: auto; }
+@media (max-width: 900px) { .fr-layout { grid-template-columns: 1fr; } .fr-picker { position: static; max-height: 420px; } }

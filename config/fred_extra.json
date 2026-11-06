@@ -1,0 +1,4 @@
+{
+  "_說明": "FRED 圖表頁要額外預載的序列代號（在 fred.stlouisfed.org 搜尋，網址 /series/ 後面那串），例如 \"NAPM\"、\"BAMLEMCBPIOAS\"。存檔推送後，下次自動更新即會出現在 FRED 圖表頁。",
+  "series": []
+}

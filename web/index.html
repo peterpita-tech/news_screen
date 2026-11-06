@@ -19,6 +19,7 @@
     <nav class="views" id="views">
       <a href="#news" data-view="news">市場事件</a>
       <a href="#liquidity" data-view="liquidity">流動性圖表</a>
+      <a href="#fred" data-view="fred">FRED 圖表</a>
       <a href="#monitor" data-view="monitor">指標監控</a>
       <a href="#indcharts" data-view="indcharts">指標圖表</a>
       <a href="#scenario" data-view="scenario">情境判讀</a>
@@ -59,6 +60,15 @@
 <section class="view page" id="view-liquidity" hidden>
   <div class="page-hd"><h2>流動性圖表</h2><p>Fed 利率走廊、淨流動性、殖利率曲線、信用利差、S&amp;P 500 本益比與預估本益比、風險情緒。<span id="lqMeta"></span></p></div>
   <div id="lqPanels"></div>
+</section>
+
+<!-- ============================ FRED 圖表 ============================ -->
+<section class="view page" id="view-fred" hidden>
+  <div class="page-hd"><h2>FRED 圖表</h2><p>從約 95 個預載的 FRED 總經序列任選組合，可切換年增率、年變動、指數化與月 / 季平均，即時繪圖；不同單位自動分開繪製。網址可分享目前組合。</p></div>
+  <div class="fr-layout">
+    <aside class="fr-picker card" id="frPicker"></aside>
+    <div class="fr-main"><div id="frControls"></div><div id="frChart"></div></div>
+  </div>
 </section>
 
 <!-- ============================ 指標監控 ============================ -->
@@ -120,5 +130,6 @@
 <div class="toast" id="toast" hidden></div>
 <script src="app.js"></script>
 <script src="charts.js"></script>
+<script src="fred.js"></script>
 </body>
 </html>

@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from . import article, autofill, charts, fetchers, indicators, integrate, market, news, scenarios, screener
+from . import article, autofill, charts, fred_catalog, fetchers, indicators, integrate, market, news, scenarios, screener
 from .themes import THEMES
 from .universe import META, OVERVIEW, UNIVERSE
 
@@ -166,6 +166,7 @@ def collect(demo: bool = False) -> dict:
                 errors.append(f"multpl {path}：{str(e)[:100]}")
     chart_data = charts.build(fred, yahoo, valuation, manual.get("spx_fwd_pe"))
     chart_data["monitor"] = charts.build_monitor(fred, yahoo)
+    fred_cat = fred_catalog.build(errors, dm.fred_catalog_get if demo else None)
     chart_data["overview"] = charts.build_overview(yahoo)
 
     ctx = indicators.Ctx(yahoo, fred, manual)
@@ -199,6 +200,7 @@ def collect(demo: bool = False) -> dict:
         "news": news_items,
         "article_stats": art_stats,
         "charts": chart_data,
+        "fred_catalog": fred_cat,
         "spx_pe_ttm": valuation.get("pe", [[None, None]])[-1] if valuation.get("pe") else None,
         "market": {**{k: v for k, v in mk.items() if k != "rows"}, "rows": mk_rows},
         "names": _names(news_items, theme_sum, rows + mk_rows),
@@ -226,6 +228,7 @@ def write_all(folder: Path, data: dict) -> None:
     data["market_meta"] = {k: v for k, v in mk.items() if k != "rows"} | {"count": len(mk["rows"])}
     write(folder / "market.json", mk)
     write(folder / "charts.json", data.pop("charts", None) or {"panels": []})
+    write(folder / "fred.json", data.pop("fred_catalog", None) or {"series": {}})
     write(folder / "data.json", data)
 
 

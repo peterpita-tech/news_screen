@@ -186,3 +186,17 @@ class ArticleTests(unittest.TestCase):
         with mock.patch.object(fetchers, "http_get", return_value=rss):
             items = fetchers.rss_items("u", "CNBC", "en")
         self.assertIn("Federal Reserve kept rates", items[0]["summary"])
+
+
+class FredCatalogTests(unittest.TestCase):
+    def test_build_and_freq(self):
+        from dashboard import fred_catalog as fc
+        monthly = [(f"20{y:02d}-{m:02d}-01", float(m)) for y in range(10, 26) for m in range(1, 13)]
+        daily = [((__import__("datetime").date(2010, 1, 1) + __import__("datetime").timedelta(days=i)).isoformat(), 1.0) for i in range(6000)]
+        get = lambda sid, start: daily if sid.startswith("DGS") else monthly
+        errs = []
+        out = fc.build(errs, get)
+        self.assertEqual(out["series"]["UNRATE"]["freq"], "月")
+        self.assertEqual(out["series"]["DGS10"]["freq"], "日")
+        self.assertTrue(all(d >= fc.DAILY_START for d, _ in out["series"]["DGS10"]["data"]))
+        self.assertGreater(len(out["series"]), 80)

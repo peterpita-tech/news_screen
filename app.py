@@ -72,6 +72,28 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+        if path == "/fred.json" and (CACHE_DIR / "fred.json").exists():
+            body = (CACHE_DIR / "fred.json").read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if path == "/api/fred":
+            # 本機版：即時抓任意 FRED 序列（GitHub Pages 靜態版沒有這個端點）
+            from urllib.parse import parse_qs, urlparse
+            from dashboard import fetchers, fred_catalog
+            sid = (parse_qs(urlparse(self.path).query).get("id") or [""])[0].strip().upper()
+            if not sid or not sid.replace("_", "").isalnum() or len(sid) > 40:
+                return self._json({"error": "代號格式不正確"}, 400)
+            try:
+                data = fetchers.fred_series(sid, fred_catalog.LONG_START)
+                return self._json({"id": sid, "name": sid, "cat": "即時查詢", "unit": "",
+                                   "freq": fred_catalog._freq(data), "data": [[d, v] for d, v in data]})
+            except Exception as e:  # noqa: BLE001
+                return self._json({"error": str(e)[:200]}, 502)
         if path == "/api/status":
             return self._json({"busy": _state["busy"], "error": _state["last_error"], "local": True})
         return super().do_GET()

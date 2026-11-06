@@ -29,6 +29,8 @@ def main():
     print("新聞來源：" + "、".join(f"{k} {v}" for k, v in top))
     for name in ("動區動趨", "BigGo財經", "FinancialTimes"):
         print(f"  {name}: {sum(1 for n in data.get('news', []) if name.lower() in n.get('source', '').lower().replace(' ', ''))} 則")
+    fc = (data.get("fred_catalog") or {}).get("series", {})
+    print(f"FRED 圖表序列：{len(fc)} 個")
     a = data.get("article_stats") or {}
     print(f"新聞內文節錄：沿用 {a.get('reused', 0)}、新抓 {a.get('fetched', 0)}、失敗 {a.get('failed', 0)}")
     mk = data.get("market") or {"rows": []}

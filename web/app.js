@@ -327,15 +327,16 @@ function setView(v, push = true) {
   state.view = v;
   document.querySelectorAll(".view").forEach((el) => (el.hidden = el.id !== "view-" + v));
   document.querySelectorAll("#views a").forEach((a) => a.classList.toggle("on", a.dataset.view === v));
-  if (push) history.replaceState(null, "", "#" + v + (v === "news" && state.ev ? "/" + state.ev : ""));
+  if (push && v !== "fred") history.replaceState(null, "", "#" + v + (v === "news" && state.ev ? "/" + state.ev : ""));
   window.scrollTo(0, 0);
   if (["liquidity", "indcharts", "overview"].includes(v) && typeof loadCharts === "function") loadCharts(v);
+  if (v === "fred" && typeof loadFred === "function") loadFred();
 }
 function route() {
-  const [v, id] = (location.hash.slice(1) || "news").split("/");
+  const [v, id] = (location.hash.slice(1) || "news").split("?")[0].split("/");
   if (id) state.ev = id;
   if (v === "news" && id) renderNews();
-  setView(["news", "liquidity", "monitor", "indcharts", "scenario", "screener", "overview"].includes(v) ? v : "news", false);
+  setView(["news", "liquidity", "fred", "monitor", "indcharts", "scenario", "screener", "overview"].includes(v) ? v : "news", false);
 }
 
 // ---------------------------------------------------------------- 跨資產＋台美全市場篩選

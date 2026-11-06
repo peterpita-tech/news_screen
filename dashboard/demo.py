@@ -57,7 +57,7 @@ def fred_series(sid):
     if sid in ("NCBEILQ027S", "GDP"):
         base = 64_000_000 if sid == "NCBEILQ027S" else 31_000
         return [((datetime.now() - timedelta(days=91 * (8 - i))).strftime("%Y-%m-01"), base * (1 + 0.01 * i)) for i in range(8)]
-    lvl, vol = FRED_LEVEL[sid]
+    lvl, vol = FRED_LEVEL.get(sid, (rng.uniform(2, 200), 0.6))
     dates = _dates(600)
     xs = [lvl]
     for _ in dates[1:]:
@@ -134,3 +134,7 @@ def valuation():
         out_pe.append((d.strftime("%Y-%m-01"), round(v, 2))); out_cape.append((d.strftime("%Y-%m-01"), round(c, 2)))
         d += timedelta(days=31)
     return {"pe": out_pe, "cape": out_cape}
+
+
+def fred_catalog_get(sid, start):
+    return fred_series(sid)
